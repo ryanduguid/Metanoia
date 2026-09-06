@@ -30,52 +30,73 @@ class TestProfileOpening(unittest.TestCase):
 
     def test_the_opening_identifies_the_person_location_and_focus(self):
         for anchor in (
-            "# Ryan Duguid", "Senior Accountant", "Newcastle, NSW",
+            "# Ryan Duguid",
+            "accountant in Newcastle, Australia",
             "Australian tax, payroll and financial reporting",
         ):
             with self.subTest(anchor=anchor):
                 self.assertIn(anchor, self.opening)
 
-    def test_worked_example_precedes_routes_and_installation(self):
-        self.assertLess(self.readme.index("Synthetic month-end example"), self.readme.index("## Start here"))
-        self.assertIn("$250", self.opening)
-        self.assertIn("#worked-example", self.opening)
-        self.assertNotIn("pip install", self.opening)
+    def test_selected_work_precedes_background(self):
+        self.assertLess(
+            self.readme.index("## Selected work"),
+            self.readme.index("## Background"),
+        )
+
+    def test_selected_work_names_four_projects_once(self):
+        selected = self.readme.split("## Selected work\n", maxsplit=1)[1]
+        selected = selected.split("\n## Background", maxsplit=1)[0]
+        projects = (
+            "australian-accounting",
+            "accounting-review-pipeline",
+            "australian-accounting-skills",
+            "Ozzit",
+        )
+        links = re.findall(r"^- \[[^\]]+\]\((https://[^)]+)\)", selected, re.MULTILINE)
+        self.assertEqual(
+            sum(line.startswith("- [") for line in selected.splitlines()),
+            len(projects),
+        )
+        for project in projects:
+            url = f"https://github.com/ryanduguid/{project}"
+            with self.subTest(project=project):
+                self.assertEqual(links.count(url), 1)
 
     def test_the_private_off_ledger_markers_are_absent(self):
         self.assertNotIn("off-ledger:", self.readme)
         self.assertNotIn("callsign:", self.readme)
 
     def test_the_profile_states_the_data_and_review_boundary(self):
-        self.assertIn("Synthetic month-end example", self.readme)
-        self.assertIn("review aids, not professional advice", self.readme)
-        self.assertIn("a human remains responsible for decisions", self.readme)
+        self.assertIn("synthetic public examples", self.readme)
+        self.assertIn("support professional review", self.readme)
+        self.assertIn("They do not lodge or write to ledgers", self.readme)
 
     def test_the_profile_links_independent_records_and_upstream_work(self):
         for url in (
-            "https://www.credly.com/badges/750e7557-ab6d-4b28-a241-8252c263613a/public_url",
-            "https://www.credly.com/badges/0f753c71-5f49-41be-8519-51e81030a8f1/public_url",
+            "https://registry.modelcontextprotocol.io/v0.1/servers/"
+            "io.github.ryanduguid%2Faus-accounting/versions/latest",
+            "https://pypi.org/project/aus-accounting-mcp/",
+            "https://www.credly.com/badges/"
+            "750e7557-ab6d-4b28-a241-8252c263613a/public_url",
+            "https://www.credly.com/badges/"
+            "0f753c71-5f49-41be-8519-51e81030a8f1/public_url",
             "https://github.com/meltano/sdk/pull/3727",
             "https://github.com/OpenAccountants/openaccountants/pull/85",
-            "https://github.com/OCA/account-financial-reporting/pull/1565",
         ):
             with self.subTest(url=url):
                 self.assertIn(url, self.readme)
-        self.assertIn("approved, awaiting merge", self.readme)
 
     def test_the_profile_names_credentials_and_links_to_more_detail(self):
         for anchor in (
             "Provisional member of Chartered Accountants ANZ",
-            "Xero specialist certification, Level 3",
+            "Xero specialist certification (Level 3)",
             "https://duguid.com.au/evidence/",
         ):
             with self.subTest(anchor=anchor):
                 self.assertIn(anchor, self.readme)
 
     def test_the_profile_remains_concise(self):
-        visible = re.sub(r"\[([^]]+)\]\([^)]+\)", r"\1", self.readme)
-        self.assertLess(len(visible.split()), 250)
-        self.assertNotIn("September 2026:", self.readme)
+        self.assertLessEqual(len(self.readme.splitlines()), 30)
 
 
 class TestAuthorityRoutes(unittest.TestCase):
@@ -83,15 +104,28 @@ class TestAuthorityRoutes(unittest.TestCase):
         self.readme = (ROOT / "README.md").read_text(encoding="utf-8")
         self.llms = (ROOT / "llms.txt").read_text(encoding="utf-8")
 
+    def test_the_profile_links_to_the_full_catalogue(self):
+        self.assertIn(
+            "[See the full project catalogue and worked examples]"
+            "(https://duguid.com.au/)",
+            self.readme,
+        )
+
     def test_llms_names_the_same_three_routes_and_data_boundary(self):
-        for text in ("## Choose a route", "Accountants", "Developers", "Evaluators", "Do not send taxpayer information or client files"):
+        for text in (
+            "## Choose a route",
+            "Accountants",
+            "Developers",
+            "Evaluators",
+            "Do not send taxpayer information or client files",
+        ):
             with self.subTest(text=text):
                 self.assertIn(text, self.llms)
 
     def test_the_profile_routes_accountants_developers_and_evaluators(self):
         for url in (
             "https://duguid.com.au/tools/",
-            "https://github.com/ryanduguid/australian-accounting",
+            "https://github.com/ryanduguid/australian-accounting/tree/main/apps/aus-accounting-mcp",
             "https://duguid.com.au/evaluate/",
         ):
             with self.subTest(url=url):
