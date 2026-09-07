@@ -2,9 +2,9 @@
 
 Canonical site index: https://duguid.com.au/llms.txt
 
-> High-density context for Large Language Models, AI coding agents, and semantic search engines.
+> The public repositories, the web tools, the engines behind them and the data boundary, with canonical links, for agents and search.
 
-## Developer Profile
+## Developer profile
 - **Name**: Ryan Duguid
 - **Location**: Newcastle, NSW, Australia
 - **Credentials**: Provisional member of Chartered Accountants ANZ, as asserted by the profile owner; this is not an endorsement by Chartered Accountants ANZ. SAP S/4HANA Certified (FI & CO), Xero specialist certification (Level 3).
@@ -55,7 +55,7 @@ Canonical site index: https://duguid.com.au/llms.txt
 - **Xero Ledger Review Gate** (https://github.com/ryanduguid/accounting-review-pipeline/tree/main/packages/elizabeth-anne-alexander): Synthetic-data demonstration of a fixed-policy trial-balance review boundary. The distribution and command remain `elizabeth-anne-alexander`.
 - **Related resources** (https://duguid.com.au/tools/#related-resources): third-party libraries, ATO guidance and Commonwealth legislation sources, kept on the site since the separate index repository was archived on 6 September 2026.
 
-## Data and Decision Boundary
+## Data and decision boundary
 - Public fixtures, examples, and tests use fabricated or synthetic data.
 - Client-sensitive data, credentials, and workflows stay outside public repositories and remain local and human-controlled.
 - Posting, payments, lodgments, approvals, and period locks remain consequential human actions.

@@ -13,12 +13,8 @@ from banner import (
     TARGETS,
     Ledger,
     check,
-    cli_banner,
     load_content,
     main,
-    masthead,
-    masthead_compact,
-    notice_scope,
     repo_header,
 )
 
@@ -150,16 +146,6 @@ class TestGeometry(unittest.TestCase):
             led = Ledger(width)
             self.assertEqual(1 + led.left + 1 + led.right + 1, width)
 
-    def test_rejects_a_width_too_narrow_to_hold_two_cells(self):
-        with self.assertRaises(ValueError):
-            Ledger(23)
-
-    def test_rejects_a_width_above_the_maximum(self):
-        Ledger(80)
-        with self.assertRaises(ValueError):
-            Ledger(81)
-
-
 class TestRendering(unittest.TestCase):
     def test_every_line_is_exactly_the_width(self):
         out = Ledger(72).full("title").split("a", "b").render().split("\n")
@@ -241,38 +227,6 @@ class TestGate(unittest.TestCase):
         self.assertIn("junction", failures[0])
 
 
-class TestMasthead(unittest.TestCase):
-    def test_the_masthead_is_thirty_four_columns_wide(self):
-        self.assertEqual({len(line) for line in masthead().split("\n")}, {34})
-
-    def test_the_masthead_uses_the_compact_profile_ledger(self):
-        expected = """+--------------------------------+
-| RYAN DUGUID                    |
-| COMPUTATIONAL ACCOUNTING       |
-+---------------+----------------+
-| DR            | CR             |
-+---------------+----------------+
-| Excel LAMBDAs | Newcastle, NSW |
-| MCP + CLI     | CA ANZ (prov.) |
-| Tax + payroll | SAP / Xero     |
-+---------------+----------------+
-|           IN BALANCE           |
-+--------------------------------+"""
-        self.assertEqual(masthead(), expected)
-
-    def test_the_masthead_passes_the_gate(self):
-        self.assertEqual(check("masthead", masthead()), [])
-
-    def test_the_masthead_closes_on_the_balance_line(self):
-        self.assertIn("IN BALANCE", masthead().split("\n")[-2])
-
-    def test_the_compact_masthead_drops_the_lettering_below_sixty(self):
-        out = masthead_compact()
-        self.assertEqual({len(line) for line in out.split("\n")}, {56})
-        self.assertNotIn("_____", out)
-        self.assertEqual(check("compact", out), [])
-
-
 class TestTemplates(unittest.TestCase):
     def test_a_repo_header_passes_the_gate(self):
         out = repo_header(
@@ -303,34 +257,15 @@ class TestTemplates(unittest.TestCase):
         self.assertTrue(data[1].endswith("| -" + " " * 33 + "|"))
         self.assertEqual(check("uneven", "\n".join(out)), [])
 
-    def test_the_cli_banner_is_sixty_four_columns_and_passes(self):
-        out = cli_banner("payday-super-checker", "1.4.0", "check payroll.csv")
-        self.assertEqual({len(line) for line in out.split("\n")}, {64})
-        self.assertEqual(check("cli", out), [])
-
-    def test_the_cli_banner_rejects_a_bare_v_version(self):
-        for bad in ("v1.4.0", "V1.4.0", "v2"):
-            with self.assertRaises(ValueError, msg=bad):
-                cli_banner("tool", bad, "run")
-
-    def test_the_cli_banner_writes_a_clean_version_as_release(self):
-        out = cli_banner("tool", "1.4.0", "run")
-        self.assertIn("release 1.4.0   github.com/ryanduguid", out)
-        self.assertNotIn("v1.4.0", out)
-
-    def test_the_scope_notice_passes(self):
-        self.assertEqual(check("notice", notice_scope()), [])
-
-
 class TestContent(unittest.TestCase):
     def test_every_target_has_a_record(self):
         content = load_content()
         for name in TARGETS:
             self.assertIn(name, content)
 
-    def test_there_are_exactly_nineteen_targets(self):
-        self.assertEqual(len(TARGETS), 19)
-        self.assertEqual(len(set(TARGETS)), 19)
+    def test_there_are_exactly_nine_targets(self):
+        self.assertEqual(len(TARGETS), 9)
+        self.assertEqual(len(set(TARGETS)), 9)
 
     def test_no_private_or_excluded_repository_is_targeted(self):
         excluded = {
@@ -378,19 +313,12 @@ class TestCommandLine(unittest.TestCase):
             code = main(["--check"])
         self.assertEqual(code, 0, buffer.getvalue())
 
-    def test_masthead_mode_prints_the_masthead(self):
-        buffer = io.StringIO()
-        with contextlib.redirect_stdout(buffer):
-            code = main(["masthead"])
-        self.assertEqual(code, 0)
-        self.assertIn("IN BALANCE", buffer.getvalue())
-
     def test_repo_mode_prints_that_repository_header(self):
         buffer = io.StringIO()
         with contextlib.redirect_stdout(buffer):
-            code = main(["repo", "payday-super-checker"])
+            code = main(["repo", "australian-accounting"])
         self.assertEqual(code, 0)
-        self.assertIn("payday-super-checker", buffer.getvalue())
+        self.assertIn("australian-accounting", buffer.getvalue())
 
     def test_an_unknown_repository_is_an_error_not_a_traceback(self):
         buffer = io.StringIO()

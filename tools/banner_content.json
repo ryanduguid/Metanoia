@@ -58,54 +58,6 @@
       "CSV data for cube loading"
     ]
   },
-  "SolomonsSword": {
-    "tagline": "Division 6, s100A and s99B trust review tools",
-    "gives": [
-      "s100A green red risk zones",
-      "s99B foreign trust review",
-      "Division 6 allocation review"
-    ],
-    "needs": [
-      "beneficiary and amount data",
-      "trust facts like corpus value"
-    ]
-  },
-  "TheExchequerTally": {
-    "tagline": "Corporate tax rate, franking and Div 203 checks",
-    "gives": [
-      "Base Rate Entity FY testing",
-      "franking account ledger",
-      "dividend distribution statements"
-    ],
-    "needs": [
-      "turnover and passive income",
-      "entity ACN and dividend data"
-    ]
-  },
-  "accounting-excel-toolkit": {
-    "tagline": "Power Query and VBA utilities for Australian ledger work",
-    "gives": [
-      "Xero TB parser (Power Query)",
-      "ABN checksum validation",
-      "workpaper formatting VBA"
-    ],
-    "needs": [
-      "a Xero trial balance CSV",
-      "Excel for Power Query or VBA"
-    ]
-  },
-  "ato-benchmark-compare": {
-    "tagline": "Offline variance analysis against ATO benchmarks",
-    "gives": [
-      "ATO benchmark ratio compare",
-      "accurate turnover definition",
-      "shows the working per account"
-    ],
-    "needs": [
-      "P and L figures per account",
-      "account to label mapping"
-    ]
-  },
   "au-tax-legislation-corpus": {
     "tagline": "Provenance-rich corpus of Commonwealth tax legislation",
     "gives": [
@@ -142,28 +94,6 @@
       "Xero CSV exports"
     ]
   },
-  "awesome-australian-accounting-tech": {
-    "tagline": "Curated open source tools for AU accounting",
-    "gives": [
-      "curated AU accounting links",
-      "seven category tool index"
-    ],
-    "needs": [
-      "PR submissions to the list"
-    ]
-  },
-  "hardhat-ledger": {
-    "tagline": "Claude Code skills for AU subcontractor ledgers",
-    "gives": [
-      "progress claim schedules",
-      "retention ledger tracking",
-      "flags legal calls for review"
-    ],
-    "needs": [
-      "a job or tracking dimension",
-      "standard CSV ledger exports"
-    ]
-  },
   "accounting-review-pipeline": {
     "tagline": "Xero exports, close controls and review packs",
     "gives": [
@@ -174,55 +104,6 @@
     "needs": [
       "local trial-balance and pack files",
       "Python; Excel or Power BI as used"
-    ]
-  },
-  "payday-super-checker": {
-    "tagline": "SG charge and due dates since 1 July 2026",
-    "gives": [
-      "due date per payday event",
-      "notional earnings and uplift",
-      "audit trail per employee"
-    ],
-    "needs": [
-      "payroll export CSV",
-      "fund receipt dates",
-      "national holiday calendar"
-    ]
-  },
-  "release-policy": {
-    "tagline": "Reusable release workflows and packaging gates",
-    "gives": [
-      "reusable release GH workflows",
-      "SBOM build and attestation",
-      "provenance attestation gate"
-    ],
-    "needs": [
-      "a pinned full commit SHA",
-      "a Python pyproject.toml"
-    ]
-  },
-  "xero-ledger-review-gate": {
-    "tagline": "Fixed policy zero network Xero review gateway",
-    "gives": [
-      "redacted variance review",
-      "local human reviewer evidence",
-      "zero network fixed policy"
-    ],
-    "needs": [
-      "a validated Xero TB export",
-      "a review policy JSON file"
-    ]
-  },
-  "xero-trial-balance-export": {
-    "tagline": "Export Xero trial balances to validated CSV",
-    "gives": [
-      "tidy Xero TB CSV export",
-      "OAuth2 token refresh",
-      "balance check before write"
-    ],
-    "needs": [
-      "a Xero app client ID secret",
-      "an as at date to export"
     ]
   }
 }
