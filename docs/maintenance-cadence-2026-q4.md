@@ -34,4 +34,4 @@ Keep missing fund receipt as an unresolved reviewer question.
 Verified with the 0.1.3 wheel and pinned fixture; verdict AT_RISK.
 ```
 
-On 1 December, an outside reviewer should be able to say: I can follow a small set of Australian accounting examples from observed problem through review and verification, and see which conclusions still lack evidence. The original burst and AI attribution remain visible; the subsequent work supplies context through traceable changes, not a cosmetically smooth graph.
+On 1 December, an outside reviewer should be able to say: I can follow a small set of Australian accounting examples from observed problem through review and verification, and see which conclusions still lack evidence. The original burst and AI attribution remain visible, and the subsequent work supplies context through traceable changes.
