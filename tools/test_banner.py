@@ -230,7 +230,7 @@ class TestGate(unittest.TestCase):
 class TestTemplates(unittest.TestCase):
     def test_a_repo_header_passes_the_gate(self):
         out = repo_header(
-            "australian-accounting",
+            "payday-super-checker",
             "SG charge and due dates since 1 July 2026",
             ["due date per payday event"],
             ["payroll export CSV"],
