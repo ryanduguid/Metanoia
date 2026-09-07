@@ -60,8 +60,8 @@ class Ledger:
         """One cell body of exactly `inner` columns.
 
         `blank` is what an empty value renders as: a hyphen in a DR or CR cell,
-        nothing in a full width row, because those blank rows are the masthead's
-        spacer rows. Truncation with an ellipsis applies to every path. A left
+        nothing in a full width row. Truncation with an ellipsis applies to every
+        path. A left
         aligned cell spends one column on its leading space, a centred one does
         not, so a value that fits the cell exactly is never cut short.
         """
