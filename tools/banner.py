@@ -1,8 +1,7 @@
 """ASCII ledger banners for the profile and repository READMEs.
 
-Renders the DR and CR ledger banner system: a masthead for the profile README,
-a header for each public repository, a startup banner for the command line
-tools, and a scope notice. Output is 7 bit ASCII only, so it survives any
+Renders the DR and CR ledger banner system: a header for each active public
+repository that carries one. Output is 7 bit ASCII only, so it survives any
 codepage, terminal and pager. Box drawing is deliberately not used: it is East
 Asian Ambiguous width and renders double width under a CJK configured terminal.
 
@@ -17,10 +16,6 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 
-MIN_WIDTH = 24
-
-MAX_WIDTH = 80
-
 CONTENT = ROOT / "tools" / "banner_content.json"
 
 TARGETS = (
@@ -29,20 +24,10 @@ TARGETS = (
     "au-fpa-pack",
     "Ozzit",
     "planning-analytics-model",
-    "SolomonsSword",
-    "TheExchequerTally",
-    "accounting-excel-toolkit",
-    "ato-benchmark-compare",
     "au-tax-legislation-corpus",
     "australian-accounting",
     "australian-accounting-skills",
-    "awesome-australian-accounting-tech",
-    "hardhat-ledger",
     "accounting-review-pipeline",
-    "payday-super-checker",
-    "release-policy",
-    "xero-ledger-review-gate",
-    "xero-trial-balance-export",
 )
 
 # Two targets were skipped on Ryan's ruling, 25 August 2026. Do not re-attempt:
@@ -64,10 +49,6 @@ class Ledger:
     """
 
     def __init__(self, width: int) -> None:
-        if width < MIN_WIDTH:
-            raise ValueError(f"width {width} is below the minimum of {MIN_WIDTH}")
-        if width > MAX_WIDTH:
-            raise ValueError(f"width {width} is above the maximum of {MAX_WIDTH}")
         self.width = width
         self.mid = 1 + ((width - 3) // 2) + 1
         self.left = self.mid - 2
@@ -75,15 +56,12 @@ class Ledger:
         self._lines: list[str] = []
         self._band: int | None = None
 
-    def _rows(self) -> list[str]:
-        return self._lines
-
     def _cell(self, text: str, inner: int, center: bool, blank: str = "-") -> str:
         """One cell body of exactly `inner` columns.
 
         `blank` is what an empty value renders as: a hyphen in a DR or CR cell,
-        nothing in a full width row, because those blank rows are the masthead's
-        spacer rows. Truncation with an ellipsis applies to every path. A left
+        nothing in a full width row. Truncation with an ellipsis applies to every
+        path. A left
         aligned cell spends one column on its leading space, a centred one does
         not, so a value that fits the cell exactly is never cut short.
         """
@@ -99,7 +77,7 @@ class Ledger:
         return "+" + "-" * self.left + "+" + "-" * self.right + "+"
 
     def _open(self, cols: int) -> None:
-        rows = self._rows()
+        rows = self._lines
         if self._band is None:
             rows.append(self._rule_line(cols))
         elif self._band != cols:
@@ -110,22 +88,22 @@ class Ledger:
         self._open(1)
         inner = self.width - 2
         body = self._cell(text, inner, center, blank="")
-        self._rows().append("|" + body[:inner] + "|")
+        self._lines.append("|" + body[:inner] + "|")
         return self
 
     def split(self, left: str, right: str, center: bool = False) -> "Ledger":
         self._open(2)
         a = self._cell(left, self.left, center)
         b = self._cell(right, self.right, center)
-        self._rows().append("|" + a[: self.left] + "|" + b[: self.right] + "|")
+        self._lines.append("|" + a[: self.left] + "|" + b[: self.right] + "|")
         return self
 
     def rule(self) -> "Ledger":
-        self._rows().append(self._rule_line(self._band or 1))
+        self._lines.append(self._rule_line(self._band or 1))
         return self
 
     def render(self) -> str:
-        rows = list(self._rows())
+        rows = list(self._lines)
         rows.append(self._rule_line(self._band or 1))
         return "\n".join(rows)
 
@@ -162,30 +140,6 @@ def check(name: str, text: str) -> list[str]:
     return failures
 
 
-def masthead() -> str:
-    """The mobile-safe profile README masthead, 34 columns."""
-    led = Ledger(34)
-    led.full("RYAN DUGUID", center=False)
-    led.full("COMPUTATIONAL ACCOUNTING", center=False)
-    led.split("DR", "CR")
-    led.rule()
-    led.split("Excel LAMBDAs", "Newcastle, NSW")
-    led.split("MCP + CLI", "CA ANZ (prov.)")
-    led.split("Tax + payroll", "SAP / Xero")
-    led.full("IN BALANCE")
-    return led.render()
-
-
-def masthead_compact() -> str:
-    """The masthead below 60 columns, where lettering is dropped not wrapped."""
-    led = Ledger(56)
-    led.full("RYAN DUGUID")
-    led.rule()
-    led.full("computational accounting, Australian tax")
-    led.split("DR  Excel, MCP, CLI", "CR  Newcastle NSW")
-    return led.render()
-
-
 def repo_header(name: str, tagline: str, gives: list[str], needs: list[str]) -> str:
     """A repository README header, 72 columns.
 
@@ -211,49 +165,10 @@ def repo_header(name: str, tagline: str, gives: list[str], needs: list[str]) -> 
     return led.render()
 
 
-def cli_banner(name: str, release: str, command: str) -> str:
-    """A command line startup banner, 64 columns.
-
-    The release is written as release 1.4.0. A bare v before a digit reads as a
-    down arrow with nothing to connect to, so the constructor rejects one
-    rather than trusting every caller to strip it.
-    """
-    if release[:1] in ("v", "V") and release[1:2].isdigit():
-        raise ValueError(
-            f"release {release!r} starts with a bare v before a digit, "
-            f"write it as {release[1:]!r}"
-        )
-    led = Ledger(64)
-    led.full(name)
-    led.rule()
-    led.full(f"release {release}   github.com/ryanduguid")
-    led.split(f"DR  {command}", "CR  reads local files only")
-    return led.render()
-
-
-def notice_scope() -> str:
-    """The scope fence every tax adjacent repository already needs."""
-    led = Ledger(72)
-    led.full("NOT ADVICE", center=False)
-    led.rule()
-    for line in (
-        "General information about Australian tax rules.",
-        "Not tax, legal or financial advice. Verify against the",
-        "primary source before relying on any output.",
-    ):
-        led.full(line, center=False)
-    return led.render()
-
-
 def all_blocks() -> list[tuple[str, str]]:
     """Every block the gate covers, as (name, text)."""
     content = load_content()
-    blocks = [
-        ("MASTHEAD_FULL", masthead()),
-        ("MASTHEAD_COMPACT", masthead_compact()),
-        ("CLI_BANNER", cli_banner("payday-super-checker", "1.4.0", "check payroll.csv")),
-        ("NOTICE_SCOPE", notice_scope()),
-    ]
+    blocks = []
     for name in TARGETS:
         record = content[name]
         blocks.append(
@@ -274,15 +189,6 @@ def main(argv: list[str] | None = None) -> int:
         print(f"{len(blocks)} blocks checked, {len(failures)} failures")
         return 1 if failures else 0
 
-    if args[0] == "masthead":
-        print(masthead())
-        return 0
-    if args[0] == "compact":
-        print(masthead_compact())
-        return 0
-    if args[0] == "notice":
-        print(notice_scope())
-        return 0
     if args[0] == "repo" and len(args) > 1:
         content = load_content()
         if args[1] not in content:
@@ -293,7 +199,7 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     print(
-        "usage: banner.py [--check | masthead | compact | notice | repo <name>]",
+        "usage: banner.py [--check | repo <name>]",
         file=sys.stderr,
     )
     return 1

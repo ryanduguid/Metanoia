@@ -19,7 +19,6 @@ TOPIC_REPOSITORIES = (
 )
 BANNER_REPOSITORIES = (
     "australian-accounting",
-    "xero-ledger-review-gate",
     "accounting-review-pipeline",
 )
 OLD_GITHUB_URLS = (
