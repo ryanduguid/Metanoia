@@ -32,7 +32,7 @@ Canonical site index: https://duguid.com.au/llms.txt
 - **Subcontract ledger workflows** (https://duguid.com.au/tools/subcontractor-ledgers/): progress claims, retentions, WIP under AASB 15, Coal LSL, fuel tax credits.
 
 ## Adopt
-- **australian-accounting-skills** (https://github.com/ryanduguid/australian-accounting-skills): Nineteen workflow skills in the tagged v0.2.0 release: nine public-practice workflows and ten construction and mining subcontractor workflows, including the former Hardhat skills. Claude Code plugin, Codex plugin, or `npx skills add ryanduguid/australian-accounting-skills`. Prep-only. Not lodgment. Not tax advice.
+- **australian-accounting-skills** (https://github.com/ryanduguid/australian-accounting-skills): Nineteen workflow skills in the tagged v0.2.1 release; the default branch prepares v0.3.0 with fifty skills, including the former Hardhat skills. Claude Code plugin, Codex plugin, or portable skill files. `npx skills add ryanduguid/australian-accounting-skills` installs from the default branch; use the repository installation guide for the tagged release. Prep-only. Not lodgment. Not tax advice.
 - **Aus Accounting MCP** (https://github.com/ryanduguid/australian-accounting/tree/main/apps/aus-accounting-mcp): Local MCP server delegating to ato-benchmark-compare and payday-super-checker, with scoped Division 7A loan review and synthetic SBR fixtures. Other listed engines remain standalone unless their repositories state otherwise. Official MCP registry name: io.github.ryanduguid/aus-accounting (https://registry.modelcontextprotocol.io/v0.1/servers/io.github.ryanduguid%2Faus-accounting/versions/latest). Install: `uvx aus-accounting-mcp`.
 
 ## Specialised workflow
