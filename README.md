@@ -10,7 +10,7 @@ I'm an accountant in Newcastle, Australia. I build open-source controls for Aust
 
 - [australian-accounting](https://github.com/ryanduguid/australian-accounting) brings the Australian tax and payroll engines together with the local MCP server.
 - [accounting-review-pipeline](https://github.com/ryanduguid/accounting-review-pipeline) connects Xero exports, close controls and review packs with Excel and Power BI.
-- [australian-accounting-skills](https://github.com/ryanduguid/australian-accounting-skills) provides 19 preparation workflows for public practice and subcontractor accounting.
+- [australian-accounting-skills](https://github.com/ryanduguid/australian-accounting-skills) provides preparation workflows for public practice and subcontractor accounting: 19 in release v0.2.1 and 50 on the default branch preparing v0.3.0.
 - [Ozzit](https://github.com/ryanduguid/Ozzit) provides 138 native Excel LAMBDA functions for financial modelling and GST arithmetic.
 
 [See the full project catalogue and worked examples](https://duguid.com.au/). Accountants start with the [tools and worked examples](https://duguid.com.au/tools/), developers with the [local MCP server](https://github.com/ryanduguid/australian-accounting/tree/main/apps/aus-accounting-mcp), evaluators with the [public evaluations](https://duguid.com.au/evaluate/) run on fabricated inputs.
