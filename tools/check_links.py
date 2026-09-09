@@ -80,7 +80,6 @@ ARCHIVED_TARGET_ALLOWLIST: dict[str, frozenset[str]] = {
             "requests-cache",
             "ledgersmb",
             "beancount",
-            "fava",
             "bank-statement-import",
             "rest-application",
             # awaiting the owner's archive action
