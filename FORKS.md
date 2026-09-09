@@ -1,6 +1,6 @@
 # Contribution forks
 
-Reviewed 9 September 2026. These forks hold open upstream contributions; they are not original Australian accounting products. File product issues upstream.
+Reviewed 9 September 2026. These are contribution forks, not original Australian accounting products. File product issues upstream. Each section states whether its forks still hold an open upstream contribution.
 
 ## Active forks
 
