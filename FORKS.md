@@ -32,11 +32,18 @@ Every fork here is due for review under the retention rule below; none holds an 
 
 | Fork | Upstream | Fork state | Last contribution |
 | --- | --- | --- | --- |
-| [pyxero](https://github.com/ryanduguid/pyxero) | [freakboy3742/pyxero](https://github.com/freakboy3742/pyxero) | archived | [#440](https://github.com/freakboy3742/pyxero/pull/440), merged 10 September 2026; [#439](https://github.com/freakboy3742/pyxero/pull/439), merged 9 September 2026 |
-| [rest-application](https://github.com/ryanduguid/rest-application) | [pledger-io/rest-application](https://github.com/pledger-io/rest-application) | archived | [#272](https://github.com/pledger-io/rest-application/pull/272), closed 6 September 2026 |
-| [LedgerSMB](https://github.com/ryanduguid/LedgerSMB) | [ledgersmb/LedgerSMB](https://github.com/ledgersmb/LedgerSMB) | archived | [#9842](https://github.com/ledgersmb/LedgerSMB/pull/9842), closed 6 September 2026 |
 | [ERPNext-Australian-Localisation](https://github.com/ryanduguid/ERPNext-Australian-Localisation) | [Arus-Info/ERPNext-Australian-Localisation](https://github.com/Arus-Info/ERPNext-Australian-Localisation) | active | none opened |
 | [aussie-bean-tools](https://github.com/ryanduguid/aussie-bean-tools) | [johnmee/aussie-bean-tools](https://github.com/johnmee/aussie-bean-tools) | active | none opened |
+
+## Preserved for retirement
+
+Ryan selected these three forks for deletion. On 10 September 2026, checks by author and fork head found no open upstream PRs. Complete advertised Git histories were backed up and restored into fresh repositories, with matching refs and reachable objects. Upstream links retain the contribution record after the forks are deleted.
+
+| Fork | Upstream | Merged contributions |
+| --- | --- | --- |
+| pyxero | [freakboy3742/pyxero](https://github.com/freakboy3742/pyxero) | [#440](https://github.com/freakboy3742/pyxero/pull/440), merged 10 September 2026; [#439](https://github.com/freakboy3742/pyxero/pull/439), merged 9 September 2026 |
+| rest-application | [pledger-io/rest-application](https://github.com/pledger-io/rest-application) | [#272](https://github.com/pledger-io/rest-application/pull/272), merged 6 September 2026 |
+| LedgerSMB | [ledgersmb/LedgerSMB](https://github.com/ledgersmb/LedgerSMB) | [#9842](https://github.com/ledgersmb/LedgerSMB/pull/9842), merged 6 September 2026 |
 
 ## Pruned forks
 
