@@ -33,7 +33,6 @@ Every fork here is due for review under the retention rule below; none holds an 
 | Fork | Upstream | Fork state | Last contribution |
 | --- | --- | --- | --- |
 | [ERPNext-Australian-Localisation](https://github.com/ryanduguid/ERPNext-Australian-Localisation) | [Arus-Info/ERPNext-Australian-Localisation](https://github.com/Arus-Info/ERPNext-Australian-Localisation) | active | none opened |
-| [aussie-bean-tools](https://github.com/ryanduguid/aussie-bean-tools) | [johnmee/aussie-bean-tools](https://github.com/johnmee/aussie-bean-tools) | active | none opened |
 
 ## Preserved for retirement
 
@@ -46,6 +45,8 @@ Ryan selected these three forks for deletion. On 10 September 2026, checks by au
 | LedgerSMB | [ledgersmb/LedgerSMB](https://github.com/ledgersmb/LedgerSMB) | [#9842](https://github.com/ledgersmb/LedgerSMB/pull/9842), merged 6 September 2026 |
 
 ## Pruned forks
+
+The aussie-bean-tools fork no longer appeared in the account inventory on 10 September 2026, and its former URL returned 404. The [upstream project](https://github.com/johnmee/aussie-bean-tools) remains available; no upstream contribution was open at the last review.
 
 The sdk and django-money forks were deleted on 6 September 2026 after checking for open upstream PRs by author and fork head. Both had zero. Complete advertised Git histories were preserved in verified local bundles before deletion, including commits absent from the current upstream branch tips. The accepted [Meltano SDK contribution](https://github.com/meltano/sdk/pull/3727) remains upstream.
 
