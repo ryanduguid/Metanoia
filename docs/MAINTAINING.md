@@ -58,7 +58,7 @@ GitHub About on the two flagship repositories (description, homepage, topics) is
 | Nineteen released workflows (v0.2.0), plugin and `npx skills` install | `australian-accounting-skills/README.md` and the 19 `.claude/skills/*/SKILL.md` folders at tag `v0.2.0`: nine public-practice and ten subcontractor workflows |
 | Local MCP facade; uvx from PyPI; delegated engines; scoped Div 7A review; SBR synthetic | `australian-accounting/apps/aus-accounting-mcp/README.md` and its `DISCLAIMER.md` |
 | Experimental payday-super review, possible SG-charge exposure and no ATO-assessment determination | `australian-accounting/packages/payday-super-checker/README.md` and its `paydaysuper/deadlines.py` |
-| 134 LAMBDA functions, native Excel only, no add-ins or macros | `Ozzit/README.md` |
+| 133 native Excel LAMBDA functions plus five help tables, no add-ins or macros | `Ozzit/README.md` |
 | Xero trial-balance export requires movement and year-to-date balance before writing | `accounting-review-pipeline/packages/xero-trial-balance-export/README.md`, the balance-check paragraph under Scope and disclaimer |
 | Local profit-and-loss comparison against ATO benchmarks, with working shown | `australian-accounting/packages/ato-benchmark-compare/README.md`; do not imply ATO endorsement |
 | Source-linked LLM operating guide for Australian accounting, tax and BAS work | `llm-tax-guardrails/README.md`; do not imply certification or endorsement |
