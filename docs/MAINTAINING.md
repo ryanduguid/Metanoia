@@ -25,7 +25,7 @@ How to report a security concern is in [SECURITY.md](../SECURITY.md). Account-wi
 
 ## Updating the public README
 
-The profile opens with a synthetic month-end example, followed by three routes for accountants, developers and evaluators. Keep the complete visible README below 250 words. Preserve credentials, accepted upstream links and the separate pending OCA status. Do not restore a news paragraph or an install command above the example. The full catalogue stays on the website.
+Preserve the current README layout: introduction and badges, Selected work, Background and Setup. Ryan rejected the worked-example opener and restored this layout. Keep the audience links and the link to the full website catalogue. Change the layout only when he asks for a redesign.
 
 Ryan supplied and approved his Senior Accountant role at an advisory firm and Newcastle NSW location on 6 September 2026. That current owner assertion supersedes the older instruction to omit employment. It does not imply vendor affiliation, practitioner registration or regulatory endorsement. Change identity or credentials only on a newer owner assertion.
 
@@ -55,7 +55,7 @@ GitHub About on the two flagship repositories (description, homepage, topics) is
 | Claim | Source of truth |
 | --- | --- |
 | Identity, location and credentials | Profile-owner assertions. Confirm with the owner before changing or republishing them |
-| Nineteen released workflows (v0.2.0), plugin and `npx skills` install | `australian-accounting-skills/README.md` and the 19 `.claude/skills/*/SKILL.md` folders at tag `v0.2.0`: nine public-practice and ten subcontractor workflows |
+| Released and default-branch skill counts, plugins and installation | `australian-accounting-skills/README.md` and the skill inventory at the exact release or commit being described; keep release counts separate from unreleased work |
 | Local MCP facade; uvx from PyPI; delegated engines; scoped Div 7A review; SBR synthetic | `australian-accounting/apps/aus-accounting-mcp/README.md` and its `DISCLAIMER.md` |
 | Experimental payday-super review, possible SG-charge exposure and no ATO-assessment determination | `australian-accounting/packages/payday-super-checker/README.md` and its `paydaysuper/deadlines.py` |
 | 133 native Excel LAMBDA functions plus five help tables, no add-ins or macros | `Ozzit/README.md` |
@@ -87,7 +87,7 @@ Forks used only to send upstream pull requests stay out of the product list.
 - Describing payday-super output as a compliance, liability or ATO determination. It is an experimental review aid with stated factual limits.
 - Calling Ozzit macro-free while dropping the native-Excel or compatibility context from its own README.
 - Saying the Xero exporter writes any trial balance. Both movement and year-to-date balances must reconcile before it writes the CSV.
-- Conflating releases. Historical v0.1.5 shipped nine public-practice skills. The unified v0.2.0 release ships those nine plus ten construction and mining workflows. Use the released nineteen-skill count for adoption; retain the nine-skill count only when describing v0.1.5.
+- Conflating releases and default-branch work. Verify the inventory at the referenced tag or commit before stating a count; a larger inventory on the default branch does not change an earlier release.
 - Treating mentions of Xero, the ATO, CA ANZ or SAP as proof of employment, partnership, approval, registration or endorsement.
 - Using retired repository names (`CharlesHenryWickens`, `JohnKenley`, `JohnSpenceOgilvy`, `MaryAddisonHamilton`, `ElizabethAnneAlexander`, `RaymondChambers`, `RussellMathews`, `SirArthurFadden`, `SirAlexanderFitzgerald`, `EdwinNixon`, `LouisGoldberg`) in new copy.
 
