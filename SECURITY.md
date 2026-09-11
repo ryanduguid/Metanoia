@@ -2,8 +2,8 @@
 
 ## Scope
 
-This repository is the GitHub profile repository for `@ryanduguid`. It contains
-profile documentation and the two checks that test it (banner-check and
+This repository contains portfolio documentation for `@ryanduguid` and
+the two checks that test it (banner-check and
 link-check). It does not distribute application code, packages, deployed
 services or credentials.
 
