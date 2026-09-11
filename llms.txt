@@ -39,6 +39,7 @@ Canonical site index: https://duguid.com.au/llms.txt
 - **Hardhat Ledger workflows** (https://github.com/ryanduguid/australian-accounting-skills): The ten construction and mining subcontractor workflows now ship in Australian Accounting Skills (Security of Payment, retentions, WIP, Coal LSL, Fuel Tax Credits). Install the unified pack only; do not install a second Hardhat pack. Prep-only. Not tax advice.
 
 ## Analytics and reporting
+- **au-fpa-pack** (https://github.com/ryanduguid/au-fpa-pack): Australian extension of Jeff Brines / Guiderail's openfpa. Lumbridge Services is a fictional Newcastle maintenance business with an Excel cash forecast, profit-to-cash reconciliation, management briefing and receipt-delay scenario. The source-only example is not a client case; the independent accountant trial remains pending. Source and trial: https://github.com/ryanduguid/au-fpa-pack/tree/main/examples/lumbridge-services.
 - **Australian Accounting Power BI** (https://github.com/ryanduguid/accounting-review-pipeline/tree/main/apps/australian-accounting-power-bi): Source-controlled Power BI project for Australian accounting analytics, consolidation, ATO benchmarks and Payday Super review.
 
 ## Engines those products call

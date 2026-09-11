@@ -8,6 +8,7 @@ I'm an accountant in Newcastle, Australia. I build open-source controls for Aust
 
 ## Selected work
 
+- [au-fpa-pack](https://github.com/ryanduguid/au-fpa-pack) explains profit and cash through a fictional Newcastle maintenance business, with an Excel forecast, a management briefing and a receipt-delay scenario.
 - [australian-accounting](https://github.com/ryanduguid/australian-accounting) brings the Australian tax and payroll engines together with the local MCP server.
 - [accounting-review-pipeline](https://github.com/ryanduguid/accounting-review-pipeline) connects Xero exports, close controls and review packs with Excel and Power BI.
 - [australian-accounting-skills](https://github.com/ryanduguid/australian-accounting-skills) provides preparation workflows for public practice and subcontractor accounting: 19 in release v0.2.1 and 50 on the default branch preparing v0.3.0.
