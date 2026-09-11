@@ -39,10 +39,11 @@ class TestProfileOpening(unittest.TestCase):
             self.readme.index("## Background"),
         )
 
-    def test_selected_work_names_four_projects_once(self):
+    def test_selected_work_names_five_projects_once(self):
         selected = self.readme.split("## Selected work\n", maxsplit=1)[1]
         selected = selected.split("\n## Background", maxsplit=1)[0]
         projects = (
+            "au-fpa-pack",
             "australian-accounting",
             "accounting-review-pipeline",
             "australian-accounting-skills",
@@ -92,7 +93,7 @@ class TestProfileOpening(unittest.TestCase):
                 self.assertIn(anchor, self.readme)
 
     def test_the_profile_remains_concise(self):
-        self.assertLessEqual(len(self.readme.splitlines()), 30)
+        self.assertLessEqual(len(self.readme.splitlines()), 31)
 
 
 class TestAuthorityRoutes(unittest.TestCase):
