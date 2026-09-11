@@ -1,6 +1,8 @@
 # Maintaining this profile
 
-This repository is the GitHub profile README for [@ryanduguid](https://github.com/ryanduguid). It is documentation only: there is no application to build, test or deploy.
+Metanoia contains the portfolio documentation, maintenance tools and original repository history for [@ryanduguid](https://github.com/ryanduguid). The separate `ryanduguid/ryanduguid` repository displays the public profile README. It is documentation only: there is no application to build or deploy.
+
+Keep the profile repository's `README.md` aligned when changing the copy here. The profile repository was recreated after the rename on 11 September 2026, so old issue, pull request and commit URLs must use `ryanduguid/Metanoia`. Reusing the old repository name removes GitHub's rename redirect.
 
 The canonical website host is `https://duguid.com.au/`. Use that host for public website links in `README.md` and `llms.txt`; do not publish the GitHub Pages deployment address as a competing canonical URL.
 
@@ -10,7 +12,7 @@ How to report a security concern is in [SECURITY.md](../SECURITY.md). Account-wi
 
 | File | Role |
 | --- | --- |
-| `README.md` | Public profile at github.com/ryanduguid |
+| `README.md` | Portfolio copy, also maintained in the profile repository |
 | `llms.txt` | Compact agent-facing index; keep it aligned with README |
 | `SECURITY.md` | Reporting policy for this documentation-only repository |
 | `LICENSE` | CC BY 4.0 for the profile prose |
@@ -66,11 +68,11 @@ GitHub About on the two flagship repositories (description, homepage, topics) is
 ## Style
 
 - Australian English (`judgement`, `honouring`, `licence` in prose).
-- No em dashes. [#7](https://github.com/ryanduguid/ryanduguid/pull/7) and [#8](https://github.com/ryanduguid/ryanduguid/pull/8) existed to take them out. List separators are a hyphen with spaces (` - `).
+- No em dashes. [#7](https://github.com/ryanduguid/Metanoia/pull/7) and [#8](https://github.com/ryanduguid/Metanoia/pull/8) existed to take them out. List separators are a hyphen with spaces (` - `).
 - Use only the current owner-approved employment wording recorded above; do not infer registration or endorsement from it.
-- Do not add a visible LinkedIn link while the profile is inactive. [#16](https://github.com/ryanduguid/ryanduguid/pull/16). That includes the GitHub social-account slot (`gh api user/social_accounts`), not only the README. The canonical website JSON-LD and `llms.txt` may identify the hibernated Australian profile at `https://www.linkedin.com/in/ryan-duguid/` solely to distinguish it from the US namesake's unhyphenated profile.
-- Narrow provenance: original work vs forks. [#5](https://github.com/ryanduguid/ryanduguid/pull/5), then [#18](https://github.com/ryanduguid/ryanduguid/pull/18).
-- Counts of skills and functions are part of the prose. Recheck them before publication. A renamed project (Nabla to Ozzit, [#14](https://github.com/ryanduguid/ryanduguid/pull/14); CharlesHenryWickens back to payday-super-checker; JohnKenley to au-tax-mcp-server, since renamed aus-accounting-mcp) is a README change in the same breath as the repository rename.
+- Do not add a visible LinkedIn link while the profile is inactive. [#16](https://github.com/ryanduguid/Metanoia/pull/16). That includes the GitHub social-account slot (`gh api user/social_accounts`), not only the README. The canonical website JSON-LD and `llms.txt` may identify the hibernated Australian profile at `https://www.linkedin.com/in/ryan-duguid/` solely to distinguish it from the US namesake's unhyphenated profile.
+- Narrow provenance: original work vs forks. [#5](https://github.com/ryanduguid/Metanoia/pull/5), then [#18](https://github.com/ryanduguid/Metanoia/pull/18).
+- Counts of skills and functions are part of the prose. Recheck them before publication. A renamed project (Nabla to Ozzit, [#14](https://github.com/ryanduguid/Metanoia/pull/14); CharlesHenryWickens back to payday-super-checker; JohnKenley to au-tax-mcp-server, since renamed aus-accounting-mcp) is a README change in the same breath as the repository rename.
 
 ## What stays off the profile
 
