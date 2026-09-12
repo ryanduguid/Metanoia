@@ -20,9 +20,9 @@ How to report a security concern is in [SECURITY.md](../SECURITY.md). Account-wi
 | `tools/apply-topics.ps1` | Applies the topic sets to the public repositories via `gh repo edit` |
 | `tools/banner.py` | Renders and gates the ASCII ledger banner system |
 | `tools/banner_content.json` | Per-repository banner content; claims must match that repository's README |
-| `tools/check_links.py` | Link resolver behind `link-check.yml` |
+| `tools/check_links.py` | Link resolver behind `link-check.yml`; also compares the profile repository's published `FORKS.md` and `llms.txt` |
 | `tools/test_*.py` | Unit tests for the banners, link policy and repository identity |
-| `.github/workflows/link-check.yml` | CI: resolves profile links and fails on rename redirects and on links to archived repositories (needs the workflow token for the GitHub API lookups) |
+| `.github/workflows/link-check.yml` | CI: resolves profile links and fails on rename redirects, on links to archived repositories, on a profile `FORKS.md` that has drifted from the copy here and on a repository path in the profile `llms.txt` that no longer resolves (needs the read-only workflow token) |
 | `.github/workflows/banner-check.yml` | CI: unit tests plus the rendered-banner gate |
 
 ## Updating the public README
@@ -93,4 +93,4 @@ Forks used only to send upstream pull requests stay out of the product list.
 - Treating mentions of Xero, the ATO, CA ANZ or SAP as proof of employment, partnership, approval, registration or endorsement.
 - Using retired repository names (`CharlesHenryWickens`, `JohnKenley`, `JohnSpenceOgilvy`, `MaryAddisonHamilton`, `ElizabethAnneAlexander`, `RaymondChambers`, `RussellMathews`, `SirArthurFadden`, `SirAlexanderFitzgerald`, `EdwinNixon`, `LouisGoldberg`) in new copy.
 
-CI runs `.github/workflows/link-check.yml`: every link in README.md, llms.txt, SECURITY.md and docs/ must resolve, links must be https, a `github.com/ryanduguid/...` link that only works through a rename redirect fails the build, and a `github.com/ryanduguid/...` link whose repository is archived fails the build (one GitHub REST API lookup per repository, fail-closed when the lookup cannot complete). `FORKS.md` is also checked; its archived forks are allow-listed by name in `tools/check_links.py`, because its tables record them on purpose.
+CI runs `.github/workflows/link-check.yml`: every link in README.md, llms.txt, SECURITY.md and docs/ must resolve, links must be https, a `github.com/ryanduguid/...` link that only works through a rename redirect fails the build, and a `github.com/ryanduguid/...` link whose repository is archived fails the build (one GitHub REST API lookup per repository, fail-closed when the lookup cannot complete). `FORKS.md` is also checked; its archived forks are allow-listed by name in `tools/check_links.py`, because its tables record them on purpose. The check also reads the profile repository's published `FORKS.md` and `llms.txt` from `raw.githubusercontent.com`: `FORKS.md` there must match the canonical copy here, and every `ryanduguid` repository path the profile `llms.txt` names must still resolve.

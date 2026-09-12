@@ -8,7 +8,7 @@ The public profile README lives in the separate `ryanduguid/ryanduguid` reposito
 
 - `FORKS.md` is the canonical fork map: every contribution fork, its upstream and any open upstream pull request. `tools/check_links.py` reads it, so keep it here.
 - `llms.txt` is the agent-facing index kept alongside the site copy, and the link checker and the identity tests read it.
-- `tools/check_links.py` resolves every link in the repository and fails on rename redirects and on links to archived repositories. It runs in `.github/workflows/link-check.yml`.
+- `tools/check_links.py` resolves every link in the repository, fails on rename redirects and on links to archived repositories, and compares the profile repository's published `FORKS.md` and `llms.txt` against this copy. It runs in `.github/workflows/link-check.yml`.
 - `tools/banner.py` and `tools/banner_content.json` render the ASCII ledger banner and gate the copies carried in the repositories that use it. They run in `.github/workflows/banner-check.yml`.
 - `tools/test_*.py` are the unit tests for the banner, the link policy and the repository identity records.
 

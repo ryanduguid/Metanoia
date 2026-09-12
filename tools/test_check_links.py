@@ -44,6 +44,7 @@ class UrlPolicyTests(unittest.TestCase):
                     200, "https://github.com/ryanduguid/australian-accounting"
                 )),
                 patch.object(check_links, "repository_is_archived", lambda name: False),
+                patch.object(check_links, "profile_failures", list),
                 contextlib.redirect_stdout(output),
             ):
                 self.assertEqual(check_links.main(), 1)
@@ -150,10 +151,64 @@ class UrlPolicyTests(unittest.TestCase):
                     200, "https://github.com/ryanduguid/payday-super-checker"
                 )),
                 patch.object(check_links, "repository_is_archived", lambda name: True),
+                patch.object(check_links, "profile_failures", list),
                 contextlib.redirect_stdout(output),
             ):
                 self.assertEqual(check_links.main(), 1)
             self.assertEqual(output.getvalue().count("is archived"), 1)
+
+    def test_profile_copies_that_agree_pass(self) -> None:
+        local = (check_links.ROOT / "FORKS.md").read_text(encoding="utf-8")
+        published = {
+            "FORKS.md": local.replace("\n", "\r\n"),
+            "llms.txt": "- **Ozzit** (https://github.com/ryanduguid/Ozzit): LAMBDAs\n",
+        }
+        output = io.StringIO()
+
+        with contextlib.redirect_stdout(output):
+            failures = check_links.profile_failures(
+                fetch=published.__getitem__,
+                resolve=lambda url: (200, url),
+            )
+
+        self.assertEqual(failures, [])
+        self.assertIn("ok profile llms.txt https://github.com/ryanduguid/Ozzit", output.getvalue())
+
+    def test_a_profile_forks_copy_that_drifted_fails(self) -> None:
+        published = {"FORKS.md": "# Contribution forks\n", "llms.txt": "no links\n"}
+
+        failures = check_links.profile_failures(
+            fetch=published.__getitem__, resolve=lambda url: (200, url)
+        )
+
+        self.assertEqual(len(failures), 1, failures)
+        self.assertIn("canonical fork map", failures[0])
+
+    def test_a_profile_llms_repository_path_that_404s_fails(self) -> None:
+        local = (check_links.ROOT / "FORKS.md").read_text(encoding="utf-8")
+        gone = "https://github.com/ryanduguid/australian-accounting/tree/main/packages/gone"
+        published = {"FORKS.md": local, "llms.txt": f"- **Gone** ({gone}): moved\n"}
+
+        def resolve(url: str) -> tuple[int, str]:
+            raise urllib.error.HTTPError(url, 404, "Not Found", {}, None)
+
+        failures = check_links.profile_failures(
+            fetch=published.__getitem__, resolve=resolve
+        )
+
+        self.assertEqual(len(failures), 1, failures)
+        self.assertIn(f"profile llms.txt: {gone} -> HTTP 404", failures[0])
+
+    def test_a_profile_fetch_that_fails_is_a_failure(self) -> None:
+        def fetch(name: str) -> str:
+            raise urllib.error.URLError("no network")
+
+        failures = check_links.profile_failures(
+            fetch=fetch, resolve=lambda url: (200, url)
+        )
+
+        self.assertEqual(len(failures), 2, failures)
+        self.assertTrue(all("fetch failed" in failure for failure in failures))
 
     def test_normalises_markdown_code_span_url(self) -> None:
         self.assertEqual(

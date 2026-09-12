@@ -22,6 +22,11 @@ HTML href/src attributes and bare URLs, then checks in order:
    ARCHIVED_TARGET_ALLOWLIST names, per file, the archived repositories that
    file may link on purpose: FORKS.md records archived forks in its own
    tables.
+6. The profile repository's published copies still agree with this one:
+   its FORKS.md matches the canonical fork map here, and every ryanduguid
+   repository path named in its llms.txt resolves on GitHub. Both files are
+   read from raw.githubusercontent.com; GITHUB_TOKEN is sent when Actions
+   provides it and is only ever used to read.
 
 Exit 0 clean, 1 on any failure. Stdlib only.
 """
@@ -60,6 +65,8 @@ RETIRED_NAMES = [
 RETIRED_NAME_ALLOWANCE = {"docs/MAINTAINING.md": 2}
 
 USER_AGENT = "ryanduguid-profile-link-check"
+# The display profile repository, whose published copies are compared here.
+PROFILE_RAW = "https://raw.githubusercontent.com/ryanduguid/ryanduguid/main/"
 LINKEDIN_IDENTITY_URL = "https://www.linkedin.com/in/ryan-duguid/"
 # GitHub owner and repository names are case-insensitive; names are
 # lower-cased so the cache, the allowlist and the redirect check agree.
@@ -204,6 +211,64 @@ def archived_target_failures(
     return failures
 
 
+def fetch_profile_file(name: str) -> str:
+    """Read one file from the profile repository's default branch."""
+    headers = {"User-Agent": USER_AGENT}
+    token = os.environ.get("GITHUB_TOKEN")
+    if token:
+        headers["Authorization"] = f"Bearer {token}"
+    req = urllib.request.Request(PROFILE_RAW + name, headers=headers)
+    with urllib.request.urlopen(req, timeout=30) as resp:
+        return resp.read().decode("utf-8")
+
+
+def profile_failures(*, fetch=fetch_profile_file, resolve=fetch_final_url) -> list[str]:
+    """Compare this repository against the profile repository's copies.
+
+    FORKS.md is canonical here, so the published profile copy must match it
+    once line endings are normalised. Every ryanduguid repository path the
+    profile llms.txt names must still resolve, so a directory that moved out
+    of a monorepo fails this build instead of rotting on the profile. A fetch
+    that cannot complete is a failure, not a pass.
+    """
+    failures: list[str] = []
+    try:
+        published = fetch("FORKS.md")
+    except Exception as exc:  # noqa: BLE001 - report every failure mode
+        failures.append(f"profile FORKS.md: fetch failed: {exc}")
+    else:
+        local = (ROOT / "FORKS.md").read_text(encoding="utf-8")
+        if published.replace("\r\n", "\n") != local.replace("\r\n", "\n"):
+            failures.append(
+                "FORKS.md: the profile repository copy differs from this one "
+                "(this repository holds the canonical fork map)"
+            )
+
+    try:
+        llms = fetch("llms.txt")
+    except Exception as exc:  # noqa: BLE001 - report every failure mode
+        failures.append(f"profile llms.txt: fetch failed: {exc}")
+        return failures
+
+    urls = {
+        normalise_url(url) for pattern in LINK_RES for url in pattern.findall(llms)
+    }
+    for url in sorted(url for url in urls if own_repository(url)):
+        try:
+            status, _ = resolve(url)
+        except urllib.error.HTTPError as exc:
+            failures.append(f"profile llms.txt: {url} -> HTTP {exc.code}")
+            continue
+        except Exception as exc:  # noqa: BLE001 - report every failure mode
+            failures.append(f"profile llms.txt: {url} -> {exc}")
+            continue
+        if status >= 400:
+            failures.append(f"profile llms.txt: {url} -> HTTP {status}")
+            continue
+        print(f"ok profile llms.txt {url}")
+    return failures
+
+
 def main() -> int:
     failures: list[str] = []
     urls: dict[str, str] = {}
@@ -271,6 +336,7 @@ def main() -> int:
         print(f"ok {url}")
 
     failures.extend(archived_target_failures(resolved_own_urls))
+    failures.extend(profile_failures())
 
     if failures:
         print(f"\n{len(failures)} failure(s):")
