@@ -2,7 +2,7 @@
 
 Metanoia contains the portfolio documentation, maintenance tools and original repository history for [@ryanduguid](https://github.com/ryanduguid). The separate `ryanduguid/ryanduguid` repository displays the public profile README. It is documentation only: there is no application to build or deploy.
 
-Keep the profile repository's `README.md` aligned when changing the copy here. The profile repository was recreated after the rename on 11 September 2026, so old issue, pull request and commit URLs must use `ryanduguid/Metanoia`. Reusing the old repository name removes GitHub's rename redirect.
+The profile copy is edited in the profile repository; this repository's `README.md` only describes what Metanoia holds. The profile repository was recreated after the rename on 11 September 2026, so old issue, pull request and commit URLs must use `ryanduguid/Metanoia`. Reusing the old repository name removes GitHub's rename redirect.
 
 The canonical website host is `https://duguid.com.au/`. Use that host for public website links in `README.md` and `llms.txt`; do not publish the GitHub Pages deployment address as a competing canonical URL.
 
@@ -12,8 +12,8 @@ How to report a security concern is in [SECURITY.md](../SECURITY.md). Account-wi
 
 | File | Role |
 | --- | --- |
-| `README.md` | Portfolio copy, also maintained in the profile repository |
-| `llms.txt` | Compact agent-facing index; keep it aligned with README |
+| `README.md` | What this repository holds and where the profile copy lives |
+| `llms.txt` | Compact agent-facing index; keep it aligned with the profile README and the site copy |
 | `SECURITY.md` | Reporting policy for this documentation-only repository |
 | `LICENSE` | CC BY 4.0 for the profile prose |
 | `docs/MAINTAINING.md` | This runbook |
@@ -27,7 +27,7 @@ How to report a security concern is in [SECURITY.md](../SECURITY.md). Account-wi
 
 ## Updating the public README
 
-Preserve the current README layout: introduction and badges, Selected work, Background and Setup. Ryan rejected the worked-example opener and restored this layout. Keep the audience links and the link to the full website catalogue. Change the layout only when he asks for a redesign.
+The public README is edited in the profile repository, not here. Preserve its current layout: introduction and badges, Selected work, Background and Setup. Ryan rejected the worked-example opener and restored this layout. Keep the audience links and the link to the full website catalogue. Change the layout only when he asks for a redesign.
 
 Ryan supplied and approved his Senior Accountant role at an advisory firm and Newcastle NSW location on 6 September 2026. That current owner assertion supersedes the older instruction to omit employment. It does not imply vendor affiliation, practitioner registration or regulatory endorsement. Change identity or credentials only on a newer owner assertion.
 
