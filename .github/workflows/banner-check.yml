@@ -25,5 +25,9 @@ jobs:
           python-version: "3.12"
       - name: Unit tests
         run: python -m unittest discover -s tools -p "test_*.py" -v
-      - name: Gate every rendered block
+      - name: Gate every rendered block against the README that carries it
+        env:
+          # Read-only. Lifts the unauthenticated GitHub API rate limit for the
+          # README reads in tools/banner.py.
+          GITHUB_TOKEN: ${{ github.token }}
         run: python tools/banner.py --check

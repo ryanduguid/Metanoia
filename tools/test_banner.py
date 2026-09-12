@@ -5,6 +5,7 @@ from __future__ import annotations
 import contextlib
 import io
 import unittest
+import urllib.error
 
 from banner import (
     CONTENT,
@@ -12,6 +13,7 @@ from banner import (
     TARGETS,
     Ledger,
     check,
+    check_carried,
     load_content,
     main,
     repo_header,
@@ -145,7 +147,7 @@ class TestTemplates(unittest.TestCase):
         self.assertEqual({len(line) for line in out.split("\n")}, {72})
 
     def test_the_longest_repository_name_still_fits(self):
-        name = max(TARGETS, key=len)
+        name = max(load_content(), key=len)
         out = repo_header(name, "tagline", ["a"], ["b"])
         self.assertEqual(check("longest", out), [])
         self.assertIn(name, out.split("\n")[1])
@@ -164,26 +166,24 @@ class TestTemplates(unittest.TestCase):
         self.assertEqual(check("uneven", "\n".join(out)), [])
 
 class TestContent(unittest.TestCase):
-    def test_every_target_has_a_record(self):
+    def test_every_target_is_a_recorded_repository(self):
         content = load_content()
+        self.assertTrue(TARGETS)
+        self.assertEqual(len(set(TARGETS)), len(TARGETS))
         for name in TARGETS:
             self.assertIn(name, content)
 
-    def test_there_are_exactly_nine_targets(self):
-        self.assertEqual(len(TARGETS), 9)
-        self.assertEqual(len(set(TARGETS)), 9)
-
     def test_no_private_or_excluded_repository_is_targeted(self):
+        # DiogenesLamp carries a banner but is private, so the workflow token
+        # cannot read its README and the gate cannot compare against it.
         excluded = {
             "ryanduguid", ".github", "ryanduguid.github.io",
-            "ChestertonsFence", "Furphy", "claude-export",
+            "ChestertonsFence", "Furphy", "claude-export", "DiogenesLamp",
         }
         self.assertEqual(excluded & set(TARGETS), set())
 
     def test_every_record_renders_a_banner_that_passes_the_gate(self):
-        content = load_content()
-        for name in TARGETS:
-            record = content[name]
+        for name, record in load_content().items():
             gives, needs = record["gives"], record["needs"]
             out = repo_header(name, record["tagline"], gives, needs)
             self.assertEqual(check(name, out), [], f"{name} failed the gate")
@@ -200,24 +200,64 @@ class TestContent(unittest.TestCase):
                     self.assertIn(needs[index], cr, f"{name} needs row {index}")
 
     def test_every_record_carries_between_one_and_three_of_each_column(self):
-        content = load_content()
-        for name in TARGETS:
-            record = content[name]
+        for name, record in load_content().items():
             self.assertTrue(1 <= len(record["gives"]) <= 3, name)
             self.assertTrue(1 <= len(record["needs"]) <= 3, name)
 
     def test_no_record_uses_an_em_dash_or_en_dash(self):
         raw = CONTENT.read_text(encoding="utf-8")
-        self.assertNotIn("\u2014", raw)
-        self.assertNotIn("\u2013", raw)
+        self.assertNotIn(chr(0x2014), raw)  # em dash
+        self.assertNotIn(chr(0x2013), raw)  # en dash
+
+
+class TestCarriedBanners(unittest.TestCase):
+    """The gate compares each target with the README that carries it."""
+
+    def test_a_readme_that_carries_the_block_passes(self):
+        text = Ledger(72).full("title").render()
+        # A README checked out with CRLF still carries the same block.
+        readme = "\n".join(["# repo", "", "```", text, "```", ""])
+        readme = readme.replace("\n", "\r\n")
+        self.assertEqual(
+            check_carried("repo", text, fetch=lambda name: readme), []
+        )
+
+    def test_a_readme_that_lost_the_block_fails(self):
+        text = Ledger(72).full("title").render()
+        failures = check_carried("repo", text, fetch=lambda name: "# repo\n")
+        self.assertEqual(len(failures), 1, failures)
+        self.assertIn("does not carry this block", failures[0])
+
+    def test_a_readme_that_cannot_be_read_fails(self):
+        def fetch(name):
+            raise urllib.error.HTTPError(name, 404, "Not Found", {}, None)
+
+        failures = check_carried("repo", "block", fetch=fetch)
+        self.assertEqual(len(failures), 1, failures)
+        self.assertIn("README read failed", failures[0])
 
 
 class TestCommandLine(unittest.TestCase):
     def test_check_mode_passes_on_the_shipped_content(self):
+        content = load_content()
+        readmes = {
+            name: repo_header(
+                name, record["tagline"], record["gives"], record["needs"]
+            )
+            for name, record in content.items()
+        }
         buffer = io.StringIO()
         with contextlib.redirect_stdout(buffer):
-            code = main(["--check"])
+            code = main(["--check"], fetch=readmes.__getitem__)
         self.assertEqual(code, 0, buffer.getvalue())
+        self.assertIn(f"{len(content)} blocks checked", buffer.getvalue())
+
+    def test_check_mode_fails_when_a_carrier_readme_drifted(self):
+        buffer = io.StringIO()
+        with contextlib.redirect_stdout(buffer):
+            code = main(["--check"], fetch=lambda name: "# no banner here\n")
+        self.assertEqual(code, 1)
+        self.assertIn("does not carry this block", buffer.getvalue())
 
     def test_repo_mode_prints_that_repository_header(self):
         buffer = io.StringIO()

@@ -5,30 +5,37 @@ repository that carries one. Output is 7 bit ASCII only, so it survives any
 codepage, terminal and pager. Box drawing is deliberately not used: it is East
 Asian Ambiguous width and renders double width under a CJK configured terminal.
 
+`--check` renders each carrier's block, gates its geometry, then reads that
+repository's README through the GitHub API and fails when the README does not
+carry the rendered block, so drift is caught in either direction. The read
+sends GITHUB_TOKEN when Actions provides one and only ever reads.
+
 Exit 0 clean, 1 on any check failure. Stdlib only.
 """
 
 from __future__ import annotations
 
 import json
+import os
 import sys
+import urllib.request
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 
 CONTENT = ROOT / "tools" / "banner_content.json"
 
-TARGETS = (
-    "DiogenesLamp",
-    "llm-tax-guardrails",
-    "au-fpa-pack",
-    "Ozzit",
-    "planning-analytics-model",
-    "au-tax-legislation-corpus",
-    "australian-accounting",
-    "australian-accounting-skills",
-    "accounting-review-pipeline",
-)
+USER_AGENT = "ryanduguid-banner-check"
+README_API = "https://api.github.com/repos/ryanduguid/{name}/readme"
+
+# The repositories whose README carries a banner and whose README the
+# workflow token can read. DiogenesLamp carries one too, but it is a private
+# repository, so an Actions token scoped to Metanoia cannot read it and the
+# comparison would fail for want of access rather than for drift.
+# banner_content.json keeps records for repositories that carry no banner:
+# `banner.py repo <name>` renders one for pasting, and the name joins TARGETS
+# once that README carries it. Every record is still gated for geometry.
+TARGETS = ("planning-analytics-model",)
 
 # Two targets were skipped on Ryan's ruling, 25 August 2026. Do not re-attempt:
 # xero-trial-balance-export pins its README SHA-256 as a constant inside a test,
@@ -166,27 +173,58 @@ def repo_header(name: str, tagline: str, gives: list[str], needs: list[str]) -> 
 
 
 def all_blocks() -> list[tuple[str, str]]:
-    """Every block the gate covers, as (name, text)."""
-    content = load_content()
-    blocks = []
-    for name in TARGETS:
-        record = content[name]
-        blocks.append(
-            (name, repo_header(name, record["tagline"], record["gives"], record["needs"]))
-        )
-    return blocks
+    """Every recorded block, as (name, text)."""
+    return [
+        (name, repo_header(name, record["tagline"], record["gives"], record["needs"]))
+        for name, record in load_content().items()
+    ]
 
 
-def main(argv: list[str] | None = None) -> int:
+def fetch_readme(name: str) -> str:
+    """The default-branch README of ryanduguid/<name>, as raw text."""
+    headers = {"User-Agent": USER_AGENT, "Accept": "application/vnd.github.raw"}
+    token = os.environ.get("GITHUB_TOKEN")
+    if token:
+        headers["Authorization"] = f"Bearer {token}"
+    req = urllib.request.Request(README_API.format(name=name), headers=headers)
+    with urllib.request.urlopen(req, timeout=30) as resp:
+        return resp.read().decode("utf-8")
+
+
+def check_carried(name: str, text: str, *, fetch=fetch_readme) -> list[str]:
+    """Gate one block against the README that carries it.
+
+    A read that cannot complete is a failure, not a pass: an uncheckable
+    banner must not report clean.
+    """
+    try:
+        readme = fetch(name)
+    except Exception as exc:  # noqa: BLE001 - report every failure mode
+        return [f"{name}: README read failed: {exc}"]
+    if text not in readme.replace("\r\n", "\n"):
+        return [
+            f"{name}: the README of ryanduguid/{name} does not carry this block "
+            "(repaste it, or correct the record in banner_content.json)"
+        ]
+    return []
+
+
+def main(argv: list[str] | None = None, *, fetch=fetch_readme) -> int:
     args = list(sys.argv[1:] if argv is None else argv)
     if not args or args[0] == "--check":
         blocks = all_blocks()
         failures: list[str] = []
         for name, text in blocks:
             failures.extend(check(name, text))
+        rendered = dict(blocks)
+        for name in TARGETS:
+            failures.extend(check_carried(name, rendered[name], fetch=fetch))
         for failure in failures:
             print(failure)
-        print(f"{len(blocks)} blocks checked, {len(failures)} failures")
+        print(
+            f"{len(blocks)} blocks checked, {len(TARGETS)} compared with the "
+            f"README that carries them, {len(failures)} failures"
+        )
         return 1 if failures else 0
 
     if args[0] == "repo" and len(args) > 1:

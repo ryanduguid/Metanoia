@@ -17,13 +17,12 @@ How to report a security concern is in [SECURITY.md](../SECURITY.md). Account-wi
 | `SECURITY.md` | Reporting policy for this documentation-only repository |
 | `LICENSE` | CC BY 4.0 for the profile prose |
 | `docs/MAINTAINING.md` | This runbook |
-| `tools/apply-topics.ps1` | Applies the topic sets to the public repositories via `gh repo edit` |
-| `tools/banner.py` | Renders and gates the ASCII ledger banner system |
+| `tools/banner.py` | Renders the ASCII ledger banner and gates each carrier against the README that carries it |
 | `tools/banner_content.json` | Per-repository banner content; claims must match that repository's README |
 | `tools/check_links.py` | Link resolver behind `link-check.yml`; also compares the profile repository's published `FORKS.md` and `llms.txt` |
 | `tools/test_*.py` | Unit tests for the banners, link policy and repository identity |
 | `.github/workflows/link-check.yml` | CI: resolves profile links and fails on rename redirects, on links to archived repositories, on a profile `FORKS.md` that has drifted from the copy here and on a repository path in the profile `llms.txt` that no longer resolves (needs the read-only workflow token) |
-| `.github/workflows/banner-check.yml` | CI: unit tests plus the rendered-banner gate |
+| `.github/workflows/banner-check.yml` | CI: unit tests plus the rendered-banner gate (needs the read-only workflow token for the carrier README reads) |
 
 ## Updating the public README
 
@@ -50,7 +49,7 @@ The approved pin order for the proof-of-use pass is:
 
 Verify the live order after saving. GitHub has previously failed to persist drag reordering; unpinning and re-ticking in the intended sequence is the fallback. Pins follow repository node IDs through renames. The profile README deliberately has no duplicate pin catalogue. Keep infrastructure and contribution forks out of the pins.
 
-GitHub About on the two flagship repositories (description, homepage, topics) is applied from each repo's `docs/DISCOVERY.md` via `scripts/publish-github-about.sh`.
+GitHub About on the two flagship repositories (description, homepage, topics) is applied from each repo's `docs/DISCOVERY.md` via `scripts/publish-github-about.sh`. Topics elsewhere are set directly through the API; the `apply-topics.ps1` script that used to live here covered only six repositories and has been removed.
 
 ## Claims that must be checked
 
