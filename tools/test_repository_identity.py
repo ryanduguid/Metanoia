@@ -1,15 +1,13 @@
 from __future__ import annotations
 
-import json
-import os
 import re
-import shutil
-import subprocess
 import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-TOPIC_REPOSITORIES = (
+# The maintained repositories that carry the topic sets and the profile pins.
+# Topics are applied directly through the GitHub API, not from a script here.
+MAINTAINED_REPOSITORIES = (
     "australian-accounting",
     "accounting-review-pipeline",
     "australian-accounting-skills",
@@ -17,6 +15,8 @@ TOPIC_REPOSITORIES = (
     "llm-tax-guardrails",
     "au-tax-legislation-corpus",
 )
+# Recorded in banner_content.json, whether or not their README carries the
+# banner today: the record is what a paste would be rendered from.
 BANNER_REPOSITORIES = (
     "australian-accounting",
     "accounting-review-pipeline",
@@ -62,43 +62,7 @@ ARCHIVED_REPOSITORIES = frozenset(
 
 
 class RepositoryIdentityTests(unittest.TestCase):
-    def test_topic_updates_only_address_maintained_writable_repositories(self) -> None:
-        powershell = shutil.which("pwsh") or shutil.which("powershell")
-        if powershell is None:
-            # The topic script is PowerShell, so without an interpreter there is
-            # nothing to exercise. Skip rather than fail so the suite still passes
-            # on machines without pwsh; the GitHub runners ship pwsh and run it.
-            self.skipTest("PowerShell (pwsh or powershell) is not installed, so apply-topics.ps1 cannot run")
-        # Stub only the external write boundary, never call GitHub from this test.
-        command = r"""
-$ErrorActionPreference = 'Stop'
-$global:topicCalls = [System.Collections.Generic.List[object]]::new()
-function gh { $global:topicCalls.Add(@($args)); $global:LASTEXITCODE = 0 }
-& $env:TOPIC_SCRIPT_UNDER_TEST
-'TOPIC_CALLS_JSON=' + (ConvertTo-Json -InputObject $global:topicCalls.ToArray() -Depth 4 -Compress)
-"""
-        result = subprocess.run(
-            [powershell, "-NoLogo", "-NoProfile", "-NonInteractive", "-Command", command],
-            env={**os.environ, "TOPIC_SCRIPT_UNDER_TEST": str(ROOT / "tools" / "apply-topics.ps1")},
-            capture_output=True,
-            text=True,
-            timeout=30,
-            check=False,
-        )
-        self.assertEqual(result.returncode, 0, result.stderr)
-        records = [line for line in result.stdout.splitlines() if line.startswith("TOPIC_CALLS_JSON=")]
-        self.assertEqual(len(records), 1, result.stdout)
-        calls = json.loads(records[0].split("=", 1)[1])
-        self.assertEqual(len(calls), len(TOPIC_REPOSITORIES))
-        self.assertEqual({call[2] for call in calls}, {f"ryanduguid/{name}" for name in TOPIC_REPOSITORIES})
-        for call in calls:
-            with self.subTest(repository=call[2]):
-                self.assertEqual(call[:2], ["repo", "edit"])
-                self.assertGreater(len(call), 3)
-                self.assertEqual(call[3::2], ["--add-topic"] * len(call[4::2]))
-
     def test_active_profile_surfaces_use_canonical_repositories(self) -> None:
-        topics = (ROOT / "tools" / "apply-topics.ps1").read_text(encoding="utf-8")
         banners = "\n".join(
             path.read_text(encoding="utf-8")
             for path in (
@@ -110,13 +74,10 @@ function gh { $global:topicCalls.Add(@($args)); $global:LASTEXITCODE = 0 }
             path.read_text(encoding="utf-8")
             for path in (
                 ROOT / "llms.txt",
-                ROOT / "tools" / "apply-topics.ps1",
                 ROOT / "tools" / "banner.py",
                 ROOT / "tools" / "banner_content.json",
             )
         )
-        for repository in TOPIC_REPOSITORIES:
-            self.assertIn(f'"ryanduguid/{repository}" =', topics)
         for repository in BANNER_REPOSITORIES:
             self.assertIn(f'"{repository}"', banners)
         for old_url in OLD_GITHUB_URLS:
@@ -130,7 +91,7 @@ function gh { $global:topicCalls.Add(@($args)); $global:LASTEXITCODE = 0 }
         self.assertEqual(recorded, INTENDED_PINS)
         self.assertEqual(len(set(recorded)), 6)
         self.assertFalse(set(recorded) & ARCHIVED_REPOSITORIES)
-        self.assertTrue(set(recorded) <= set(TOPIC_REPOSITORIES))
+        self.assertTrue(set(recorded) <= set(MAINTAINED_REPOSITORIES))
 
     def test_profile_component_links_point_to_the_maintained_directories(self) -> None:
         text = (ROOT / "llms.txt").read_text(encoding="utf-8")

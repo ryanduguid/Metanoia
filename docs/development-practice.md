@@ -7,5 +7,3 @@ The 5,404-contribution burst in August and September 2026 reflects concentrated 
 I preserve existing commits and AI co-author trailers. Future changes should group one reviewable problem with its evidence and verification. I will not backdate work, split commits to inflate activity or rewrite attribution to make the graph look different.
 
 The next evaluation work uses synthetic inputs and records where an independent reader gets stuck. Prepared examples and maintainer checks are labelled as such. Outside feedback will only be described as received after someone actually provides it and permits any public quotation.
-
-The [twelve-week maintenance cadence](maintenance-cadence-2026-q4.md) limits new work to reproduced problems and records weeks that produce no change.

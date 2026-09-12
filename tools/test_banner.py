@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import contextlib
 import io
-import re
 import unittest
+import urllib.error
 
 from banner import (
     CONTENT,
@@ -13,102 +13,18 @@ from banner import (
     TARGETS,
     Ledger,
     check,
+    check_carried,
     load_content,
     main,
     repo_header,
 )
 
 
-class TestProfileOpening(unittest.TestCase):
-    def setUp(self):
-        self.readme = (ROOT / "README.md").read_text(encoding="utf-8")
-        self.opening = self.readme.split("\n## ", maxsplit=1)[0]
-
-    def test_the_opening_identifies_the_person_location_and_focus(self):
-        for anchor in (
-            "# Ryan Duguid",
-            "accountant in Newcastle, Australia",
-            "Australian tax, payroll and financial reporting",
-        ):
-            with self.subTest(anchor=anchor):
-                self.assertIn(anchor, self.opening)
-
-    def test_selected_work_precedes_background(self):
-        self.assertLess(
-            self.readme.index("## Selected work"),
-            self.readme.index("## Background"),
-        )
-
-    def test_selected_work_names_five_projects_once(self):
-        selected = self.readme.split("## Selected work\n", maxsplit=1)[1]
-        selected = selected.split("\n## Background", maxsplit=1)[0]
-        projects = (
-            "au-fpa-pack",
-            "australian-accounting",
-            "accounting-review-pipeline",
-            "australian-accounting-skills",
-            "Ozzit",
-        )
-        links = re.findall(r"^- \[[^\]]+\]\((https://[^)]+)\)", selected, re.MULTILINE)
-        self.assertEqual(
-            sum(line.startswith("- [") for line in selected.splitlines()),
-            len(projects),
-        )
-        for project in projects:
-            url = f"https://github.com/ryanduguid/{project}"
-            with self.subTest(project=project):
-                self.assertEqual(links.count(url), 1)
-
-    def test_the_private_off_ledger_markers_are_absent(self):
-        self.assertNotIn("off-ledger:", self.readme)
-        self.assertNotIn("callsign:", self.readme)
-
-    def test_the_profile_states_the_data_and_review_boundary(self):
-        self.assertIn("synthetic public examples", self.readme)
-        self.assertIn("support professional review", self.readme)
-        self.assertIn("They do not lodge or write to ledgers", self.readme)
-
-    def test_the_profile_links_independent_records_and_upstream_work(self):
-        for url in (
-            "https://registry.modelcontextprotocol.io/v0.1/servers/"
-            "io.github.ryanduguid%2Faus-accounting/versions/latest",
-            "https://pypi.org/project/aus-accounting-mcp/",
-            "https://www.credly.com/badges/"
-            "750e7557-ab6d-4b28-a241-8252c263613a/public_url",
-            "https://www.credly.com/badges/"
-            "0f753c71-5f49-41be-8519-51e81030a8f1/public_url",
-            "https://github.com/meltano/sdk/pull/3727",
-            "https://github.com/OpenAccountants/openaccountants/pull/85",
-        ):
-            with self.subTest(url=url):
-                self.assertIn(url, self.readme)
-
-    def test_the_profile_names_credentials_and_links_to_more_detail(self):
-        for anchor in (
-            "Provisional member of Chartered Accountants ANZ",
-            "Xero specialist certification (Level 3)",
-            "https://duguid.com.au/evidence/",
-        ):
-            with self.subTest(anchor=anchor):
-                self.assertIn(anchor, self.readme)
-
-    def test_the_profile_remains_concise(self):
-        self.assertLessEqual(len(self.readme.splitlines()), 31)
-
-
-class TestAuthorityRoutes(unittest.TestCase):
-    def setUp(self):
-        self.readme = (ROOT / "README.md").read_text(encoding="utf-8")
-        self.llms = (ROOT / "llms.txt").read_text(encoding="utf-8")
-
-    def test_the_profile_links_to_the_full_catalogue(self):
-        self.assertIn(
-            "[See the full project catalogue and worked examples]"
-            "(https://duguid.com.au/)",
-            self.readme,
-        )
+class TestAgentIndex(unittest.TestCase):
+    """llms.txt stays in this repository, so its routes are checked here."""
 
     def test_llms_names_the_same_three_routes_and_data_boundary(self):
+        llms = (ROOT / "llms.txt").read_text(encoding="utf-8")
         for text in (
             "## Choose a route",
             "Accountants",
@@ -117,16 +33,7 @@ class TestAuthorityRoutes(unittest.TestCase):
             "Do not send taxpayer information or client files",
         ):
             with self.subTest(text=text):
-                self.assertIn(text, self.llms)
-
-    def test_the_profile_routes_accountants_developers_and_evaluators(self):
-        for url in (
-            "https://duguid.com.au/tools/",
-            "https://github.com/ryanduguid/australian-accounting/tree/main/apps/aus-accounting-mcp",
-            "https://duguid.com.au/evaluate/",
-        ):
-            with self.subTest(url=url):
-                self.assertIn(url, self.readme)
+                self.assertIn(text, llms)
 
 
 class TestGeometry(unittest.TestCase):
@@ -240,7 +147,7 @@ class TestTemplates(unittest.TestCase):
         self.assertEqual({len(line) for line in out.split("\n")}, {72})
 
     def test_the_longest_repository_name_still_fits(self):
-        name = max(TARGETS, key=len)
+        name = max(load_content(), key=len)
         out = repo_header(name, "tagline", ["a"], ["b"])
         self.assertEqual(check("longest", out), [])
         self.assertIn(name, out.split("\n")[1])
@@ -259,26 +166,24 @@ class TestTemplates(unittest.TestCase):
         self.assertEqual(check("uneven", "\n".join(out)), [])
 
 class TestContent(unittest.TestCase):
-    def test_every_target_has_a_record(self):
+    def test_every_target_is_a_recorded_repository(self):
         content = load_content()
+        self.assertTrue(TARGETS)
+        self.assertEqual(len(set(TARGETS)), len(TARGETS))
         for name in TARGETS:
             self.assertIn(name, content)
 
-    def test_there_are_exactly_nine_targets(self):
-        self.assertEqual(len(TARGETS), 9)
-        self.assertEqual(len(set(TARGETS)), 9)
-
     def test_no_private_or_excluded_repository_is_targeted(self):
+        # DiogenesLamp carries a banner but is private, so the workflow token
+        # cannot read its README and the gate cannot compare against it.
         excluded = {
             "ryanduguid", ".github", "ryanduguid.github.io",
-            "ChestertonsFence", "Furphy", "claude-export",
+            "ChestertonsFence", "Furphy", "claude-export", "DiogenesLamp",
         }
         self.assertEqual(excluded & set(TARGETS), set())
 
     def test_every_record_renders_a_banner_that_passes_the_gate(self):
-        content = load_content()
-        for name in TARGETS:
-            record = content[name]
+        for name, record in load_content().items():
             gives, needs = record["gives"], record["needs"]
             out = repo_header(name, record["tagline"], gives, needs)
             self.assertEqual(check(name, out), [], f"{name} failed the gate")
@@ -295,24 +200,64 @@ class TestContent(unittest.TestCase):
                     self.assertIn(needs[index], cr, f"{name} needs row {index}")
 
     def test_every_record_carries_between_one_and_three_of_each_column(self):
-        content = load_content()
-        for name in TARGETS:
-            record = content[name]
+        for name, record in load_content().items():
             self.assertTrue(1 <= len(record["gives"]) <= 3, name)
             self.assertTrue(1 <= len(record["needs"]) <= 3, name)
 
     def test_no_record_uses_an_em_dash_or_en_dash(self):
         raw = CONTENT.read_text(encoding="utf-8")
-        self.assertNotIn("\u2014", raw)
-        self.assertNotIn("\u2013", raw)
+        self.assertNotIn(chr(0x2014), raw)  # em dash
+        self.assertNotIn(chr(0x2013), raw)  # en dash
+
+
+class TestCarriedBanners(unittest.TestCase):
+    """The gate compares each target with the README that carries it."""
+
+    def test_a_readme_that_carries_the_block_passes(self):
+        text = Ledger(72).full("title").render()
+        # A README checked out with CRLF still carries the same block.
+        readme = "\n".join(["# repo", "", "```", text, "```", ""])
+        readme = readme.replace("\n", "\r\n")
+        self.assertEqual(
+            check_carried("repo", text, fetch=lambda name: readme), []
+        )
+
+    def test_a_readme_that_lost_the_block_fails(self):
+        text = Ledger(72).full("title").render()
+        failures = check_carried("repo", text, fetch=lambda name: "# repo\n")
+        self.assertEqual(len(failures), 1, failures)
+        self.assertIn("does not carry this block", failures[0])
+
+    def test_a_readme_that_cannot_be_read_fails(self):
+        def fetch(name):
+            raise urllib.error.HTTPError(name, 404, "Not Found", {}, None)
+
+        failures = check_carried("repo", "block", fetch=fetch)
+        self.assertEqual(len(failures), 1, failures)
+        self.assertIn("README read failed", failures[0])
 
 
 class TestCommandLine(unittest.TestCase):
     def test_check_mode_passes_on_the_shipped_content(self):
+        content = load_content()
+        readmes = {
+            name: repo_header(
+                name, record["tagline"], record["gives"], record["needs"]
+            )
+            for name, record in content.items()
+        }
         buffer = io.StringIO()
         with contextlib.redirect_stdout(buffer):
-            code = main(["--check"])
+            code = main(["--check"], fetch=readmes.__getitem__)
         self.assertEqual(code, 0, buffer.getvalue())
+        self.assertIn(f"{len(content)} blocks checked", buffer.getvalue())
+
+    def test_check_mode_fails_when_a_carrier_readme_drifted(self):
+        buffer = io.StringIO()
+        with contextlib.redirect_stdout(buffer):
+            code = main(["--check"], fetch=lambda name: "# no banner here\n")
+        self.assertEqual(code, 1)
+        self.assertIn("does not carry this block", buffer.getvalue())
 
     def test_repo_mode_prints_that_repository_header(self):
         buffer = io.StringIO()

@@ -27,9 +27,10 @@ jobs:
           python-version: "3.12"
       - name: Test link-check policy
         run: python tools/test_check_links.py
-      - name: Resolve every link, fail on rename redirects and archived targets
+      - name: Resolve every link and compare the profile copies
         env:
-          # Lifts the unauthenticated GitHub API rate limit for the
-          # archived-repository lookups in tools/check_links.py.
+          # Read-only. Lifts the unauthenticated GitHub API rate limit for the
+          # archived-repository lookups in tools/check_links.py and is sent
+          # with the profile FORKS.md and llms.txt reads.
           GITHUB_TOKEN: ${{ github.token }}
         run: python tools/check_links.py
