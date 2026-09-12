@@ -20,6 +20,9 @@ foreach ($repo in $repoTopics.Keys) {
     Write-Host "Updating topics for ${repo}: $($topics -join ', ')" -ForegroundColor Yellow
     $topicArgs = @($topics | ForEach-Object { "--add-topic", $_ })
     gh repo edit $repo @topicArgs
+    if ($LASTEXITCODE -ne 0) {
+        throw "Failed to update topics for ${repo} (GitHub CLI exit $LASTEXITCODE)."
+    }
 }
 
 Write-Host "All repository topic tags successfully updated." -ForegroundColor Green

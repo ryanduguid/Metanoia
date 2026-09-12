@@ -73,7 +73,7 @@ class RepositoryIdentityTests(unittest.TestCase):
         command = r"""
 $ErrorActionPreference = 'Stop'
 $global:topicCalls = [System.Collections.Generic.List[object]]::new()
-function gh { $global:topicCalls.Add(@($args)) }
+function gh { $global:topicCalls.Add(@($args)); $global:LASTEXITCODE = 0 }
 & $env:TOPIC_SCRIPT_UNDER_TEST
 'TOPIC_CALLS_JSON=' + (ConvertTo-Json -InputObject $global:topicCalls.ToArray() -Depth 4 -Compress)
 """

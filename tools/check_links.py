@@ -95,10 +95,10 @@ ARCHIVED_TARGET_ALLOWLIST: dict[str, frozenset[str]] = {
 _ARCHIVED_VERDICTS: dict[str, bool | Exception] = {}
 
 LINK_RES = [
-    re.compile(r"\[[^\]]*\]\((https?://[^)\s]+)\)"),
-    re.compile(r"\((https?://[^)\s]+)\)"),
-    re.compile(r"(?:href|src)=\"(https?://[^\"]+)\""),
-    re.compile(r"(?<![(\"=\]])(https?://[^\s)\">\]]+)"),
+    re.compile(r"\[[^\]]*\]\((https?://[^)\s]+)\)", re.I),
+    re.compile(r"\((https?://[^)\s]+)\)", re.I),
+    re.compile(r"\b(?:href|src)\s*=\s*['\"]?(https?://[^\s'\">]+)", re.I),
+    re.compile(r"(?<![('\"=\]])(https?://[^\s)'\">\]]+)", re.I),
 ]
 
 
@@ -110,7 +110,8 @@ def fetch_final_url(url: str) -> tuple[int, str]:
 
 def normalise_url(url: str) -> str:
     """Remove prose punctuation and Markdown code-span delimiters."""
-    return url.rstrip(".,;:`")
+    scheme, separator, remainder = url.rstrip(".,;:`").partition(":")
+    return scheme.lower() + separator + remainder
 
 
 def is_accepted_automation_denial(url: str, status: int) -> bool:
