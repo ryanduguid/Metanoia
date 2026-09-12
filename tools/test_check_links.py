@@ -14,6 +14,21 @@ import check_links
 
 
 class UrlPolicyTests(unittest.TestCase):
+    def test_html_attribute_forms_and_mixed_case_schemes(self) -> None:
+        for markup in (
+            '<a HREF="HTTP://example.test/path">link</a>',
+            "<img src='HTTP://example.test/path'>",
+            '<a href=HTTP://example.test/path>link</a>',
+            '[link](HTTP://example.test/path)',
+        ):
+            with self.subTest(markup=markup):
+                urls = {
+                    check_links.normalise_url(url)
+                    for pattern in check_links.LINK_RES
+                    for url in pattern.findall(markup)
+                }
+                self.assertEqual(urls, {'http://example.test/path'})
+
     def test_parenthesised_machine_index_links_cannot_hide_rename_redirects(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
