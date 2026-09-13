@@ -130,6 +130,18 @@ class UrlPolicyTests(unittest.TestCase):
         self.assertEqual(len(failures), 1, failures)
         self.assertIn("payday-super-checker should link", failures[0])
 
+        stale = (
+            "- **payday-super-checker** (https://github.com/ryanduguid/payday-super-checker): old\n"
+            + GOOD_LLMS
+        )
+        self.assertEqual(len(check_links.llms_index_failures(stale)), 1)
+
+        with_site_page = (
+            "- **payday-super-checker** (https://duguid.com.au/tools/payday-super/): explainer\n"
+            + GOOD_LLMS
+        )
+        self.assertEqual(check_links.llms_index_failures(with_site_page), [])
+
     def test_normalises_markdown_code_span_url(self) -> None:
         self.assertEqual(
             check_links.normalise_url("https://duguid.com.au/`"),
