@@ -25,12 +25,10 @@ jobs:
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: "3.12"
-      - name: Test link-check policy
-        run: python tools/test_check_links.py
-      - name: Resolve every link and compare the profile copies
+      - name: Unit tests
+        run: python -m unittest discover -s tools -p "test_*.py" -v
+      - name: Resolve every link here and in the profile copies
         env:
-          # Read-only. Lifts the unauthenticated GitHub API rate limit for the
-          # archived-repository lookups in tools/check_links.py and is sent
-          # with the profile FORKS.md and llms.txt reads.
+          # Read-only. Sent with the profile FORKS.md and llms.txt reads.
           GITHUB_TOKEN: ${{ github.token }}
         run: python tools/check_links.py

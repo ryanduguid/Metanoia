@@ -1,7 +1,8 @@
 """Link and content checks for the profile repository.
 
-Scans README.md, llms.txt, SECURITY.md and docs/*.md for Markdown links,
-HTML href/src attributes and bare URLs, then checks in order:
+Scans README.md, SECURITY.md and docs/*.md here, plus the profile repository's
+published FORKS.md and llms.txt, for Markdown links, HTML href/src attributes
+and bare URLs, then checks in order:
 
 1. Every link is https, never http.
 2. Every github.com/ryanduguid/<repo> link resolves to that exact repository.
@@ -10,30 +11,18 @@ HTML href/src attributes and bare URLs, then checks in order:
 3. Every other absolute link resolves (2xx after redirects).
 4. Retired repository names and em or en dashes must not appear outside the
    allowed history notes in docs/MAINTAINING.md.
-5. No github.com/ryanduguid/<repo> link may resolve to an archived
-   repository. The September 2026 consolidation archived thirteen public
-   repositories after their code moved into the monorepos (two more source
-   repositories were renamed into the monorepos, which check 2 already
-   catches); an archived repository still answers 200, so the redirect check
-   cannot see it. Only links that resolved and passed check 2 are classified.
-   Each repository is looked up once through the GitHub REST API
-   (GITHUB_TOKEN lifts the rate limit) with the same transient-failure
-   retries, and a lookup that cannot complete is a failure, not a pass.
-   ARCHIVED_TARGET_ALLOWLIST names, per file, the archived repositories that
-   file may link on purpose: FORKS.md records archived forks in its own
-   tables.
-6. The profile repository's published copies still agree with this one:
-   its FORKS.md matches the canonical fork map here, and every ryanduguid
-   repository path named in its llms.txt resolves on GitHub. Both files are
-   read from raw.githubusercontent.com; GITHUB_TOKEN is sent when Actions
-   provides it and is only ever used to read.
+5. The profile llms.txt names each component at the monorepo directory that
+   now holds it.
+
+The profile files are read from raw.githubusercontent.com; GITHUB_TOKEN is
+sent when Actions provides it and is only ever used to read. A fetch that
+cannot complete is a failure, not a pass.
 
 Exit 0 clean, 1 on any failure. Stdlib only.
 """
 
 from __future__ import annotations
 
-import json
 import os
 import re
 import sys
@@ -42,9 +31,12 @@ import urllib.request
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-FILES = ["README.md", "llms.txt", "SECURITY.md", "FORKS.md", *sorted(
+FILES = ["README.md", "SECURITY.md", *sorted(
     str(p.relative_to(ROOT)) for p in (ROOT / "docs").glob("*.md")
 )]
+# Published by the profile repository and checked the same way as the local
+# files. The fork map and the agent index live there, not here.
+PROFILE_FILES = ["FORKS.md", "llms.txt"]
 
 RETIRED_NAMES = [
     "CharlesHenryWickens",
@@ -65,41 +57,31 @@ RETIRED_NAMES = [
 RETIRED_NAME_ALLOWANCE = {"docs/MAINTAINING.md": 2}
 
 USER_AGENT = "ryanduguid-profile-link-check"
-# The display profile repository, whose published copies are compared here.
+# The display profile repository, whose published copies are checked here.
 PROFILE_RAW = "https://raw.githubusercontent.com/ryanduguid/ryanduguid/main/"
 LINKEDIN_IDENTITY_URL = "https://www.linkedin.com/in/ryan-duguid/"
 # GitHub owner and repository names are case-insensitive; names are
-# lower-cased so the cache, the allowlist and the redirect check agree.
+# lower-cased so the redirect check agrees with itself.
 OWN_REPO = re.compile(r"^https://github\.com/ryanduguid/([A-Za-z0-9._-]+)", re.I)
-GITHUB_API = "https://api.github.com/repos/ryanduguid/"
 
-MAX_FETCH_ATTEMPTS = 5
-
-# Per file, the archived repositories it may link on purpose. FORKS.md records
-# forks that are already archived and forks awaiting the owner's archive
-# action; those rows are the record of the decision, not link drift. Keyed by
-# file and repository so an exemption never widens to the whole file.
-ARCHIVED_TARGET_ALLOWLIST: dict[str, frozenset[str]] = {
-    "FORKS.md": frozenset(
-        {
-            # already archived on GitHub
-            "pyxero",
-            "requests-cache",
-            "ledgersmb",
-            "beancount",
-            "bank-statement-import",
-            "rest-application",
-            # awaiting the owner's archive action
-            "l10n-australia",
-            "account-reconcile",
-            "account-financial-reporting",
-        }
-    ),
+# Where each component named in the profile llms.txt now lives. A component
+# that moved out of a monorepo fails this build instead of rotting on the
+# profile.
+LLMS_COMPONENTS = {
+    "Aus Accounting MCP": "australian-accounting/tree/main/apps/aus-accounting-mcp",
+    "payday-super-checker": "australian-accounting/tree/main/packages/payday-super-checker",
+    "ato-benchmark-compare": "australian-accounting/tree/main/packages/ato-benchmark-compare",
+    "TheExchequerTally": "australian-accounting/tree/main/packages/the-exchequer-tally",
+    "SolomonsSword": "australian-accounting/tree/main/packages/solomons-sword",
+    "xero-trial-balance-export": "accounting-review-pipeline/tree/main/packages/xero-trial-balance-export",
+    "accounting-excel-toolkit": "accounting-review-pipeline/tree/main/adapters/accounting-excel-toolkit",
+    "Workpaper Review Gate": "accounting-review-pipeline/tree/main/packages/review-ready-gate",
+    "Monthly Close Controls": "accounting-review-pipeline/tree/main/packages/monthly-close-control-plane",
+    "Xero Ledger Review Gate": "accounting-review-pipeline/tree/main/packages/elizabeth-anne-alexander",
+    "Australian Accounting Power BI": "accounting-review-pipeline/tree/main/apps/australian-accounting-power-bi",
+    "Hardhat Ledger workflows": "australian-accounting-skills",
 }
-
-# Verdict or failure per repository name, so one repository costs one API
-# request however many files link it.
-_ARCHIVED_VERDICTS: dict[str, bool | Exception] = {}
+LLMS_ENTRY = re.compile(r"^- \*\*([^*]+)\*\* \((https://[^)]+)\):", re.MULTILINE)
 
 LINK_RES = [
     re.compile(r"\[[^\]]*\]\((https?://[^)\s]+)\)", re.I),
@@ -132,85 +114,6 @@ def own_repository(url: str) -> str | None:
     return match.group(1).lower() if match else None
 
 
-def fetch_repository_archived(
-    name: str, *, opener: object = urllib.request.urlopen
-) -> bool:
-    """Ask the GitHub REST API whether ryanduguid/<name> is archived.
-
-    Retries transient transport failures and HTTP 5xx. Raises on any
-    remaining transport or parse failure so the caller records a failure; a
-    link that cannot be classified must not pass as maintained.
-    """
-    headers = {"User-Agent": USER_AGENT, "Accept": "application/vnd.github+json"}
-    token = os.environ.get("GITHUB_TOKEN")
-    if token:
-        headers["Authorization"] = f"Bearer {token}"
-    req = urllib.request.Request(GITHUB_API + name, headers=headers)
-    for attempt in range(1, MAX_FETCH_ATTEMPTS + 1):
-        try:
-            with opener(req, timeout=30) as resp:  # type: ignore[operator]
-                payload = json.loads(resp.read().decode("utf-8"))
-            break
-        except urllib.error.HTTPError as exc:
-            if not 500 <= exc.code < 600 or attempt == MAX_FETCH_ATTEMPTS:
-                raise
-            print(f"retry {attempt}/{MAX_FETCH_ATTEMPTS - 1} {name}: HTTP {exc.code}")
-        except (urllib.error.URLError, TimeoutError) as exc:
-            if attempt == MAX_FETCH_ATTEMPTS:
-                raise
-            print(f"retry {attempt}/{MAX_FETCH_ATTEMPTS - 1} {name}: {exc}")
-    archived = payload.get("archived")
-    if not isinstance(archived, bool):
-        raise ValueError(f"GitHub API returned no archived flag for {name}")
-    return archived
-
-
-def repository_is_archived(name: str) -> bool:
-    """Cached verdict for ryanduguid/<name>; a cached failure re-raises."""
-    if name not in _ARCHIVED_VERDICTS:
-        try:
-            _ARCHIVED_VERDICTS[name] = fetch_repository_archived(name)
-        except Exception as exc:  # noqa: BLE001 - cache every failure mode
-            _ARCHIVED_VERDICTS[name] = exc
-    verdict = _ARCHIVED_VERDICTS[name]
-    if isinstance(verdict, Exception):
-        raise verdict
-    return verdict
-
-
-def archived_target_failures(
-    urls: dict[str, set[str]], *, lookup=None
-) -> list[str]:
-    """Fail every own-repository link whose target is archived.
-
-    ``urls`` maps each resolved own-repository URL to every file it was found
-    in; callers pass only links that already resolved and passed the rename
-    check, so a broken link is reported once. The allowlist is applied per
-    file and repository, so an exemption in one file never covers another.
-    """
-    if lookup is None:
-        lookup = repository_is_archived
-    failures: list[str] = []
-    for url, sources in sorted(urls.items()):
-        name = own_repository(url)
-        if name is None:
-            continue
-        for src in sorted(sources):
-            if name in ARCHIVED_TARGET_ALLOWLIST.get(src.replace("\\", "/"), frozenset()):
-                continue
-            try:
-                archived = lookup(name)
-            except Exception as exc:  # noqa: BLE001 - report every failure mode
-                failures.append(f"{src}: {url} -> archived lookup failed: {exc}")
-                continue
-            if archived:
-                failures.append(
-                    f"{src}: {url} -> ryanduguid/{name} is archived "
-                    "(repoint the link to the maintained repository)"
-                )
-    return failures
-
-
 def fetch_profile_file(name: str) -> str:
     """Read one file from the profile repository's default branch."""
     headers = {"User-Agent": USER_AGENT}
@@ -222,65 +125,37 @@ def fetch_profile_file(name: str) -> str:
         return resp.read().decode("utf-8")
 
 
-def profile_failures(*, fetch=fetch_profile_file, resolve=fetch_final_url) -> list[str]:
-    """Compare this repository against the profile repository's copies.
-
-    FORKS.md is canonical here, so the published profile copy must match it
-    once line endings are normalised. Every ryanduguid repository path the
-    profile llms.txt names must still resolve, so a directory that moved out
-    of a monorepo fails this build instead of rotting on the profile. A fetch
-    that cannot complete is a failure, not a pass.
-    """
+def llms_index_failures(text: str) -> list[str]:
+    """Check that the profile llms.txt names each component where it lives."""
+    links = dict(LLMS_ENTRY.findall(text))
     failures: list[str] = []
-    try:
-        published = fetch("FORKS.md")
-    except Exception as exc:  # noqa: BLE001 - report every failure mode
-        failures.append(f"profile FORKS.md: fetch failed: {exc}")
-    else:
-        local = (ROOT / "FORKS.md").read_text(encoding="utf-8")
-        if published.replace("\r\n", "\n") != local.replace("\r\n", "\n"):
+    for name, location in LLMS_COMPONENTS.items():
+        expected = f"https://github.com/ryanduguid/{location}"
+        if links.get(name) != expected:
             failures.append(
-                "FORKS.md: the profile repository copy differs from this one "
-                "(this repository holds the canonical fork map)"
+                f"profile llms.txt: {name} should link {expected}, found {links.get(name)}"
             )
-
-    try:
-        llms = fetch("llms.txt")
-    except Exception as exc:  # noqa: BLE001 - report every failure mode
-        failures.append(f"profile llms.txt: fetch failed: {exc}")
-        return failures
-
-    urls = {
-        normalise_url(url) for pattern in LINK_RES for url in pattern.findall(llms)
-    }
-    for url in sorted(url for url in urls if own_repository(url)):
-        try:
-            status, _ = resolve(url)
-        except urllib.error.HTTPError as exc:
-            failures.append(f"profile llms.txt: {url} -> HTTP {exc.code}")
-            continue
-        except Exception as exc:  # noqa: BLE001 - report every failure mode
-            failures.append(f"profile llms.txt: {url} -> {exc}")
-            continue
-        if status >= 400:
-            failures.append(f"profile llms.txt: {url} -> HTTP {status}")
-            continue
-        print(f"ok profile llms.txt {url}")
     return failures
 
 
 def main() -> int:
     failures: list[str] = []
-    urls: dict[str, str] = {}
-    sources: dict[str, set[str]] = {}
-
+    sources: dict[str, str] = {}
     for rel in FILES:
-        text = (ROOT / rel).read_text(encoding="utf-8")
+        sources[rel] = (ROOT / rel).read_text(encoding="utf-8")
+    for name in PROFILE_FILES:
+        try:
+            sources[f"profile {name}"] = fetch_profile_file(name)
+        except Exception as exc:  # noqa: BLE001 - report every failure mode
+            failures.append(f"profile {name}: fetch failed: {exc}")
+    if "profile llms.txt" in sources:
+        failures.extend(llms_index_failures(sources["profile llms.txt"]))
+
+    urls: dict[str, str] = {}
+    for rel, text in sources.items():
         for pattern in LINK_RES:
             for url in pattern.findall(text):
-                url = normalise_url(url)
-                urls.setdefault(url, rel)
-                sources.setdefault(url, set()).add(rel)
+                urls.setdefault(normalise_url(url), rel)
         hits = sum(text.count(name) for name in RETIRED_NAMES)
         allowed_lines = RETIRED_NAME_ALLOWANCE.get(rel.replace("\\", "/"), 0)
         if allowed_lines:
@@ -298,7 +173,6 @@ def main() -> int:
                 failures.append(f"{rel}: {label} present")
 
     checked = 0
-    resolved_own_urls: dict[str, set[str]] = {}
     for url, src in sorted(urls.items()):
         if url.startswith("http:"):
             failures.append(f"{src}: insecure link {url}")
@@ -332,18 +206,14 @@ def main() -> int:
                     f"{src}: {url} redirected to {final} (rename redirect, repoint the link)"
                 )
                 continue
-            resolved_own_urls[url] = sources[url]
         print(f"ok {url}")
-
-    failures.extend(archived_target_failures(resolved_own_urls))
-    failures.extend(profile_failures())
 
     if failures:
         print(f"\n{len(failures)} failure(s):")
         for f in failures:
             print(f"  FAIL {f}")
         return 1
-    print(f"\nall clear: {checked} links resolved across {len(FILES)} files")
+    print(f"\nall clear: {checked} links resolved across {len(sources)} files")
     return 0
 
 

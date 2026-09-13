@@ -2,7 +2,7 @@
 
 Proposal, 5 September 2026. The owner decides; nothing here archives, closes,
 merges or publishes anything. It settles the "After the Odoo decision" rows in
-[FORKS.md](../FORKS.md): the forks of OCA `l10n-australia`, `account-reconcile`
+[FORKS.md](https://github.com/ryanduguid/ryanduguid/blob/main/FORKS.md): the forks of OCA `l10n-australia`, `account-reconcile`
 and `account-financial-reporting`, plus the already archived
 `bank-statement-import`.
 
@@ -60,8 +60,7 @@ in the GitHub UI; `bank-statement-import` is archived already.
   the ABN checksum, or set a review deadline and close it then.
 - `account-reconcile` and `account-financial-reporting` do not carry the pull
   request and can be archived at once. After that, the three FORKS.md rows
-  move to the archived table; the FORKS.md entry in the `tools/check_links.py`
-  allowlist already names them.
+  move to the archived table.
 - Nothing is deleted. An OCA contribution later starts from a fresh fork.
 
 ## Recommendation

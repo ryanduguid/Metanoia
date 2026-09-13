@@ -27,7 +27,7 @@ commit `db241e5cd665544914c3ec34c2c025e645e1bcc3` (two files:
    upstream implementation and pass against the fix.
 2. Open the pull request against `XeroAPI/xero-mcp-server:main` from that
    branch with the title and body below.
-3. Update `FORKS.md` with the upstream PR number and move the fork row to
+3. Update the profile repository's `FORKS.md` with the upstream PR number and move the fork row to
    tracking only once it merges.
 
 ## Title
