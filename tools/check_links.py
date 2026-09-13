@@ -126,10 +126,15 @@ def fetch_profile_file(name: str) -> str:
 
 
 def llms_index_failures(text: str) -> list[str]:
-    """Check that the profile llms.txt names each component where it lives, once."""
+    """Check that the profile llms.txt names each component at one GitHub location.
+
+    A component may also be listed under its website page; only its
+    github.com/ryanduguid entries must be exactly the maintained directory.
+    """
     links: dict[str, set[str]] = {}
     for name, url in LLMS_ENTRY.findall(text):
-        links.setdefault(name, set()).add(url)
+        if own_repository(url):
+            links.setdefault(name, set()).add(url)
     failures: list[str] = []
     for name, location in LLMS_COMPONENTS.items():
         expected = f"https://github.com/ryanduguid/{location}"
