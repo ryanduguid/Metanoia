@@ -131,8 +131,7 @@ class UrlPolicyTests(unittest.TestCase):
         self.assertIn("payday-super-checker should link", failures[0])
 
         stale = (
-            "- **payday-super-checker** (https://github.com/ryanduguid/payday-super-checker): old
-"
+            "- **payday-super-checker** (https://github.com/ryanduguid/payday-super-checker): old\n"
             + GOOD_LLMS
         )
         self.assertEqual(len(check_links.llms_index_failures(stale)), 1)
