@@ -17,4 +17,4 @@ The public profile README, the fork map `FORKS.md` and the profile `llms.txt` li
 - [docs/xero-mcp-server-upstream-pr.md](docs/xero-mcp-server-upstream-pr.md): the record of the prepared upstream pull request to `XeroAPI/xero-mcp-server`.
 - [SECURITY.md](SECURITY.md): how to report a security concern about this documentation.
 
-The prose is licensed CC BY 4.0; see [LICENSE](LICENSE).
+The prose is licensed CC BY 4.0; see [LICENSE](LICENSE). The tooling under `tools/` is separately licensed under the [MIT License](tools/LICENSE).
