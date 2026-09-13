@@ -4,7 +4,7 @@ Metanoia contains the portfolio documentation, maintenance tools and original re
 
 The profile copy is edited in the profile repository; this repository's `README.md` only describes what Metanoia holds. The profile repository was recreated after the rename on 11 September 2026, so old issue, pull request and commit URLs must use `ryanduguid/Metanoia`. Reusing the old repository name removes GitHub's rename redirect.
 
-The canonical website host is `https://duguid.com.au/`. Use that host for public website links in `README.md` and `llms.txt`; do not publish the GitHub Pages deployment address as a competing canonical URL.
+The canonical website host is `https://duguid.com.au/`. Use that host for public website links in `README.md` and in the profile repository's `llms.txt`; do not publish the GitHub Pages deployment address as a competing canonical URL.
 
 How to report a security concern is in [SECURITY.md](../SECURITY.md). Account-wide contribution, support and issue-form defaults live in [ryanduguid/.github](https://github.com/ryanduguid/.github), which has been public since 31 August 2026. Do not add a `CONTRIBUTING.md` here; it would override that default for this repository only.
 
@@ -13,16 +13,12 @@ How to report a security concern is in [SECURITY.md](../SECURITY.md). Account-wi
 | File | Role |
 | --- | --- |
 | `README.md` | What this repository holds and where the profile copy lives |
-| `llms.txt` | Compact agent-facing index; keep it aligned with the profile README and the site copy |
 | `SECURITY.md` | Reporting policy for this documentation-only repository |
 | `LICENSE` | CC BY 4.0 for the profile prose |
 | `docs/MAINTAINING.md` | This runbook |
-| `tools/banner.py` | Renders the ASCII ledger banner and gates each carrier against the README that carries it |
-| `tools/banner_content.json` | Per-repository banner content; claims must match that repository's README |
-| `tools/check_links.py` | Link resolver behind `link-check.yml`; also compares the profile repository's published `FORKS.md` and `llms.txt` |
-| `tools/test_*.py` | Unit tests for the banners, link policy and repository identity |
-| `.github/workflows/link-check.yml` | CI: resolves profile links and fails on rename redirects, on links to archived repositories, on a profile `FORKS.md` that has drifted from the copy here and on a repository path in the profile `llms.txt` that no longer resolves (needs the read-only workflow token) |
-| `.github/workflows/banner-check.yml` | CI: unit tests plus the rendered-banner gate (needs the read-only workflow token for the carrier README reads) |
+| `tools/check_links.py` | Link resolver behind `link-check.yml`; also checks the profile repository's published `FORKS.md` and `llms.txt` |
+| `tools/test_*.py` | Unit tests for the link policy and repository identity |
+| `.github/workflows/link-check.yml` | CI: unit tests, then resolves every link here and in the profile `FORKS.md` and `llms.txt` and fails on rename redirects, retired names, dashes and a profile `llms.txt` component that is not at its maintained directory (needs the read-only workflow token for the profile reads) |
 
 ## Updating the public README
 
@@ -92,4 +88,4 @@ Forks used only to send upstream pull requests stay out of the product list.
 - Treating mentions of Xero, the ATO, CA ANZ or SAP as proof of employment, partnership, approval, registration or endorsement.
 - Using retired repository names (`CharlesHenryWickens`, `JohnKenley`, `JohnSpenceOgilvy`, `MaryAddisonHamilton`, `ElizabethAnneAlexander`, `RaymondChambers`, `RussellMathews`, `SirArthurFadden`, `SirAlexanderFitzgerald`, `EdwinNixon`, `LouisGoldberg`) in new copy.
 
-CI runs `.github/workflows/link-check.yml`: every link in README.md, llms.txt, SECURITY.md and docs/ must resolve, links must be https, a `github.com/ryanduguid/...` link that only works through a rename redirect fails the build, and a `github.com/ryanduguid/...` link whose repository is archived fails the build (one GitHub REST API lookup per repository, fail-closed when the lookup cannot complete). `FORKS.md` is also checked; its archived forks are allow-listed by name in `tools/check_links.py`, because its tables record them on purpose. The check also reads the profile repository's published `FORKS.md` and `llms.txt` from `raw.githubusercontent.com`: `FORKS.md` there must match the canonical copy here, and every `ryanduguid` repository path the profile `llms.txt` names must still resolve.
+CI runs `.github/workflows/link-check.yml`: every link in README.md, SECURITY.md, docs/ and the profile repository's published `FORKS.md` and `llms.txt` (read from `raw.githubusercontent.com`) must resolve, links must be https, a `github.com/ryanduguid/...` link that only works through a rename redirect fails the build, retired names and dashes fail it, and the profile `llms.txt` must name each component at the monorepo directory recorded in `tools/check_links.py`. A profile read that cannot complete fails the build.

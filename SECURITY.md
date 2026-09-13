@@ -3,8 +3,7 @@
 ## Scope
 
 This repository contains portfolio documentation for `@ryanduguid` and
-the two checks that test it (banner-check and
-link-check). It does not distribute application code, packages, deployed
+the link check that tests it (link-check). It does not distribute application code, packages, deployed
 services or credentials.
 
 Security reports about a project linked from this profile belong in that
