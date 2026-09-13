@@ -45,7 +45,7 @@ The approved pin order for the proof-of-use pass is:
 
 Verify the live order after saving. GitHub has previously failed to persist drag reordering; unpinning and re-ticking in the intended sequence is the fallback. Pins follow repository node IDs through renames. The profile README deliberately has no duplicate pin catalogue. Keep infrastructure and contribution forks out of the pins.
 
-GitHub About on the two flagship repositories (description, homepage, topics) is applied from each repo's `docs/DISCOVERY.md` via `scripts/publish-github-about.sh`. Topics elsewhere are set directly through the API; the `apply-topics.ps1` script that used to live here covered only six repositories and has been removed.
+GitHub About on the 2 flagship repositories (description, homepage, topics) is applied from each repo's `docs/DISCOVERY.md` via `scripts/publish-github-about.sh`. Topics elsewhere are set directly through the API; the `apply-topics.ps1` script that used to live here covered only 6 repositories and has been removed.
 
 ## Claims that must be checked
 
@@ -55,7 +55,7 @@ GitHub About on the two flagship repositories (description, homepage, topics) is
 | Released and default-branch skill counts, plugins and installation | `australian-accounting-skills/README.md` and the skill inventory at the exact release or commit being described; keep release counts separate from unreleased work |
 | Local MCP facade; uvx from PyPI; delegated engines; scoped Div 7A review; SBR synthetic | `australian-accounting/apps/aus-accounting-mcp/README.md` and its `DISCLAIMER.md` |
 | Experimental payday-super review, possible SG-charge exposure and no ATO-assessment determination | `australian-accounting/packages/payday-super-checker/README.md` and its `paydaysuper/deadlines.py` |
-| 133 native Excel LAMBDA functions plus five help tables, no add-ins or macros | `Ozzit/README.md` |
+| 133 native Excel LAMBDA functions plus 5 help tables, no add-ins or macros | `Ozzit/README.md` |
 | Xero trial-balance export requires movement and year-to-date balance before writing | `accounting-review-pipeline/packages/xero-trial-balance-export/README.md`, the balance-check paragraph under Scope and disclaimer |
 | Local profit-and-loss comparison against ATO benchmarks, with working shown | `australian-accounting/packages/ato-benchmark-compare/README.md`; do not imply ATO endorsement |
 | Source-linked LLM operating guide for Australian accounting, tax and BAS work | `llm-tax-guardrails/README.md`; do not imply certification or endorsement |
@@ -66,7 +66,7 @@ GitHub About on the two flagship repositories (description, homepage, topics) is
 - No em dashes. [#7](https://github.com/ryanduguid/Metanoia/pull/7) and [#8](https://github.com/ryanduguid/Metanoia/pull/8) existed to take them out. List separators are a hyphen with spaces (` - `).
 - Use only the current owner-approved employment wording recorded above; do not infer registration or endorsement from it.
 - Do not add a visible LinkedIn link while the profile is inactive. [#16](https://github.com/ryanduguid/Metanoia/pull/16). That includes the GitHub social-account slot (`gh api user/social_accounts`), not only the README. The canonical website JSON-LD and `llms.txt` may identify the hibernated Australian profile at `https://www.linkedin.com/in/ryan-duguid/` solely to distinguish it from the US namesake's unhyphenated profile.
-- Narrow provenance: original work vs forks. [#5](https://github.com/ryanduguid/Metanoia/pull/5), then [#18](https://github.com/ryanduguid/Metanoia/pull/18).
+- Narrow provenance: original work versus forks. [#5](https://github.com/ryanduguid/Metanoia/pull/5), then [#18](https://github.com/ryanduguid/Metanoia/pull/18).
 - Counts of skills and functions are part of the prose. Recheck them before publication. A renamed project (Nabla to Ozzit, [#14](https://github.com/ryanduguid/Metanoia/pull/14); CharlesHenryWickens back to payday-super-checker; JohnKenley to au-tax-mcp-server, since renamed aus-accounting-mcp) is a README change in the same breath as the repository rename.
 
 ## What stays off the profile

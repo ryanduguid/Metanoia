@@ -16,7 +16,7 @@ MAINTAINED_REPOSITORIES = (
     "au-tax-legislation-corpus",
 )
 # The intended profile pins, in display order. docs/MAINTAINING.md is the
-# record the owner applies in the GitHub UI, so the two must agree.
+# record the owner applies in the GitHub UI, so the 2 must agree.
 INTENDED_PINS = (
     "accounting-review-pipeline",
     "Ozzit",

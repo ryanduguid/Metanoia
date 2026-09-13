@@ -3,7 +3,7 @@
 Status on 6 September 2026: opened as
 [XeroAPI/xero-mcp-server#305](https://github.com/XeroAPI/xero-mcp-server/pull/305)
 from branch `fix/ensure-error-token-leak`, the fork commit rebased onto
-upstream `main` at `f24583c`. Verified before opening: the two credential
+upstream `main` at `f24583c`. Verified before opening: the 2 credential
 cases fail against the unchanged `ensureError` and pass with the fix, the
 full `vitest` suite passes (18 tests) and `npm run lint` is clean. The record
 below is the state before it was opened.
@@ -16,7 +16,7 @@ same class of leak in `formatError` only.
 
 The change already exists on the fork as
 [ryanduguid/xero-mcp-server#1](https://github.com/ryanduguid/xero-mcp-server/pull/1),
-commit `db241e5cd665544914c3ec34c2c025e645e1bcc3` (two files:
+commit `db241e5cd665544914c3ec34c2c025e645e1bcc3` (2 files:
 `src/helpers/ensure-error.ts` and `src/helpers/__tests__/ensure-error.test.ts`).
 
 ## How to open it
