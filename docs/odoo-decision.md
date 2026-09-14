@@ -35,10 +35,10 @@ repeats or wraps core behaviour rather than carrying an engine into Odoo.
 Carry `l10n_au_base` through OCA review and maintain it.
 
 - Work: answer the review when it comes, then migrate the module for every
-  Odoo series (19.0 is already open and empty). OCA review needs a member with
-  write access on the repository. The only commit there is the OCA bot's and
-  who holds write access is not verified here, so the review wait has no
-  visible bound.
+  Odoo series (19.0 is already open and empty). Anyone with a GitHub account
+  can review the pull request; merging it needs a maintainer with write access
+  on the repository. The only commit there is the OCA bot's and who holds write
+  access is not verified here, so the wait for a merge has no visible bound.
 - Keeps the `l10n-australia` fork alive as the pull request head. It gives
   `account-reconcile` and `account-financial-reporting` no purpose; they would
   be archived regardless.
