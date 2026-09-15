@@ -31,7 +31,10 @@ import urllib.request
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-FILES = ["README.md", "SECURITY.md", *sorted(
+# AGENTS.md carries links like any other tracked document, and was checked by
+# neither pass: its absolute URLs were never fetched and its relative targets were
+# never resolved, so a renamed local file broke it silently.
+FILES = ["AGENTS.md", "README.md", "SECURITY.md", *sorted(
     str(p.relative_to(ROOT)) for p in (ROOT / "docs").glob("*.md")
 )]
 # Published by the profile repository and checked the same way as the local
