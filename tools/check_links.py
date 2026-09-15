@@ -158,11 +158,25 @@ def relative_link_failures(rel: str, text: str) -> list[str]:
     fetched profile file's relative targets belong to another repository.
     """
     failures: list[str] = []
+    root = Path(ROOT).resolve()
     for target in RELATIVE_LINK.findall(text):
         path = target.split("#", 1)[0].split("?", 1)[0]
         if not path:
             continue  # a bare anchor points inside this file
-        resolved = (ROOT / rel).parent / path
+        candidate = Path(path)
+        # An absolute target is not repository navigation. Checking only that it
+        # exists would pass /etc/hosts on the Ubuntu runner, and joining it would
+        # discard the source directory entirely, because pathlib lets an absolute
+        # right operand replace the left one.
+        if candidate.is_absolute() or candidate.drive or candidate.root:
+            failures.append(f"{rel}: relative link {target} is not a repository path")
+            continue
+        resolved = ((root / rel).parent / candidate).resolve()
+        # ../ can climb out of the tree, where an unrelated file that happens to
+        # exist would otherwise satisfy the check.
+        if resolved != root and root not in resolved.parents:
+            failures.append(f"{rel}: relative link {target} leaves the repository")
+            continue
         if not resolved.exists():
             failures.append(f"{rel}: relative link {target} does not exist")
     return failures
