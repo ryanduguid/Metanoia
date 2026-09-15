@@ -179,6 +179,24 @@ class UrlPolicyTests(unittest.TestCase):
             failures.extend(check_links.relative_link_failures(rel, text))
         self.assertEqual(failures, [])
 
+    def test_a_target_outside_the_repository_is_refused(self) -> None:
+        # Joining an absolute target discards the source directory, and ../ can
+        # climb out of the tree. Either way an unrelated file that happens to
+        # exist on the runner would otherwise satisfy the check: /etc/hosts is
+        # present on the Ubuntu runner CI uses.
+        for target, expected in [
+            ("/etc/hosts", "is not a repository path"),
+            ("/", "is not a repository path"),
+            ("../outside.md", "leaves the repository"),
+            ("../../elsewhere/README.md", "leaves the repository"),
+        ]:
+            with self.subTest(target=target):
+                failures = check_links.relative_link_failures(
+                    "README.md", "[x](%s)" % target
+                )
+                self.assertEqual(len(failures), 1, failures)
+                self.assertIn(expected, failures[0])
+
 
 if __name__ == "__main__":
     unittest.main()
