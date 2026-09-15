@@ -159,6 +159,26 @@ class UrlPolicyTests(unittest.TestCase):
             )
         )
 
+    def test_relative_markdown_targets_are_validated(self) -> None:
+        # LINK_RES captures only http(s) URLs, so a misspelt local target used to
+        # pass while repository navigation was broken.
+        text = (
+            "See [the runbook](docs/runbok.md), [security](SECURITY.md), "
+            "[a section](#heading), [mail](mailto:a@example.com) and "
+            "[remote](https://example.com/x)."
+        )
+        self.assertEqual(
+            check_links.relative_link_failures("README.md", text),
+            ["README.md: relative link docs/runbok.md does not exist"],
+        )
+
+    def test_every_tracked_relative_link_resolves(self) -> None:
+        failures: list[str] = []
+        for rel in check_links.FILES:
+            text = (check_links.ROOT / rel).read_text(encoding="utf-8")
+            failures.extend(check_links.relative_link_failures(rel, text))
+        self.assertEqual(failures, [])
+
 
 if __name__ == "__main__":
     unittest.main()

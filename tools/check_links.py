@@ -83,6 +83,10 @@ LLMS_COMPONENTS = {
 }
 LLMS_ENTRY = re.compile(r"^- \*\*([^*]+)\*\* \((https://[^)]+)\):", re.MULTILINE)
 
+# A Markdown target that is not a URL, a mail link or a bare anchor: that is a
+# path inside the repository, and it can be misspelt.
+RELATIVE_LINK = re.compile(r"\[[^\]]*\]\((?!\w+:|//)([^)\s]+)\)")
+
 LINK_RES = [
     re.compile(r"\[[^\]]*\]\((https?://[^)\s]+)\)", re.I),
     re.compile(r"\((https?://[^)\s]+)\)", re.I),
@@ -146,11 +150,30 @@ def llms_index_failures(text: str) -> list[str]:
     return failures
 
 
+def relative_link_failures(rel: str, text: str) -> list[str]:
+    """Check that every relative Markdown target in a tracked file exists.
+
+    LINK_RES only captures http(s) URLs, so a misspelt local target passed CI
+    while repository navigation was broken. Only tracked files are checked: a
+    fetched profile file's relative targets belong to another repository.
+    """
+    failures: list[str] = []
+    for target in RELATIVE_LINK.findall(text):
+        path = target.split("#", 1)[0].split("?", 1)[0]
+        if not path:
+            continue  # a bare anchor points inside this file
+        resolved = (ROOT / rel).parent / path
+        if not resolved.exists():
+            failures.append(f"{rel}: relative link {target} does not exist")
+    return failures
+
+
 def main() -> int:
     failures: list[str] = []
     sources: dict[str, str] = {}
     for rel in FILES:
         sources[rel] = (ROOT / rel).read_text(encoding="utf-8")
+        failures.extend(relative_link_failures(rel, sources[rel]))
     for name in PROFILE_FILES:
         try:
             sources[f"profile {name}"] = fetch_profile_file(name)
