@@ -1,8 +1,8 @@
 """Link and content checks for the profile repository.
 
-Scans README.md, SECURITY.md and docs/*.md here, plus the profile repository's
-published FORKS.md and llms.txt, for Markdown links, HTML href/src attributes
-and bare URLs, then checks in order:
+Scans AGENTS.md, README.md, SECURITY.md and docs/*.md here, plus the profile
+repository's published FORKS.md and llms.txt, for Markdown links, HTML href/src
+attributes and bare URLs, then checks in order:
 
 1. Every link is https, never http.
 2. Every github.com/ryanduguid/<repo> link resolves to that exact repository.
