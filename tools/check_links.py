@@ -1,6 +1,6 @@
 """Link and content checks for the profile repository.
 
-Scans README.md, SECURITY.md and docs/*.md here, plus the profile repository's
+Scans AGENTS.md, README.md, SECURITY.md and docs/*.md here, plus the profile repository's
 published FORKS.md and llms.txt, for Markdown links, HTML href/src attributes
 and bare URLs, then checks in order:
 
@@ -31,7 +31,10 @@ import urllib.request
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-FILES = ["README.md", "SECURITY.md", *sorted(
+# AGENTS.md carries links like any other tracked document, and was checked by
+# neither pass: its absolute URLs were never fetched and its relative targets were
+# never resolved, so a renamed local file broke it silently.
+FILES = ["AGENTS.md", "README.md", "SECURITY.md", *sorted(
     str(p.relative_to(ROOT)) for p in (ROOT / "docs").glob("*.md")
 )]
 # Published by the profile repository and checked the same way as the local
