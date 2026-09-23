@@ -1,6 +1,6 @@
 """Link and content checks for the profile repository.
 
-Scans README.md, SECURITY.md and docs/*.md here, plus the profile repository's
+Scans AGENTS.md, README.md, SECURITY.md and docs/*.md here, plus the profile repository's
 published FORKS.md and llms.txt, for Markdown links, HTML href/src attributes
 and bare URLs, then checks in order:
 
