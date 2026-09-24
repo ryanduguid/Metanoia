@@ -22,7 +22,7 @@ How to report a security concern is in [SECURITY.md](../SECURITY.md). Account-wi
 
 ## Updating the public README
 
-The public README is edited in the profile repository, not here. Preserve its current layout: introduction and badges, Selected work, Background and Setup. Ryan rejected the worked-example opener and restored this layout. Keep the audience links and the link to the full website catalogue. Change the layout only when he asks for a redesign.
+The public README is edited in the profile repository, not here. Preserve its current layout: introduction and badges, Selected work and Background. Ryan removed the Setup section in ryanduguid/ryanduguid#33. Ryan rejected the worked-example opener and restored this layout. Keep the audience links and the link to the full website catalogue. Change the layout only when he asks for a redesign.
 
 Ryan supplied and approved his Senior Accountant role at an advisory firm and Newcastle NSW location on 6 September 2026. That current owner assertion supersedes the older instruction to omit employment. It does not imply vendor affiliation, practitioner registration or regulatory endorsement. Change identity or credentials only on a newer owner assertion.
 
