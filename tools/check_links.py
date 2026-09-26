@@ -235,7 +235,7 @@ def main() -> int:
             if is_accepted_automation_denial(url, exc.code):
                 print(
                     f"accepted automation denial {url} -> HTTP {exc.code} "
-                    "(exact hibernated LinkedIn identity URL)"
+                    "(exact LinkedIn identity URL; automated requests are blocked)"
                 )
             else:
                 failures.append(f"{src}: {url} -> HTTP {exc.code}")
