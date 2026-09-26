@@ -148,7 +148,7 @@ class UrlPolicyTests(unittest.TestCase):
             "https://duguid.com.au/",
         )
 
-    def test_accepts_only_the_hibernated_linkedin_automation_denial(self) -> None:
+    def test_accepts_only_the_linkedin_identity_automation_denial(self) -> None:
         linkedin = "https://www.linkedin.com/in/ryan-duguid/"
 
         self.assertTrue(check_links.is_accepted_automation_denial(linkedin, 999))
