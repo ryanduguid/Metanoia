@@ -161,7 +161,7 @@ def relative_link_failures(rel: str, text: str) -> list[str]:
     fetched profile file's relative targets belong to another repository.
     """
     failures: list[str] = []
-    root = Path(ROOT).resolve()
+    root = ROOT
     for target in RELATIVE_LINK.findall(text):
         path = target.split("#", 1)[0].split("?", 1)[0]
         if not path:

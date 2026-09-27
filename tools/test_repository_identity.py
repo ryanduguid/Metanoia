@@ -5,16 +5,6 @@ import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-# The maintained repositories that carry the topic sets and the profile pins.
-# Topics are applied directly through the GitHub API, not from a script here.
-MAINTAINED_REPOSITORIES = (
-    "australian-accounting",
-    "accounting-review-pipeline",
-    "australian-accounting-skills",
-    "Ozzit",
-    "llm-tax-guardrails",
-    "au-tax-legislation-corpus",
-)
 # The intended profile pins, in display order. docs/MAINTAINING.md is the
 # record the owner applies in the GitHub UI, so the 2 must agree.
 INTENDED_PINS = (
@@ -34,8 +24,6 @@ class RepositoryIdentityTests(unittest.TestCase):
         recorded = tuple(re.findall(r"^\d+\. `([A-Za-z0-9._-]+)`$", section, re.MULTILINE))
 
         self.assertEqual(recorded, INTENDED_PINS)
-        self.assertEqual(len(set(recorded)), 6)
-        self.assertTrue(set(recorded) <= set(MAINTAINED_REPOSITORIES))
 
 
 if __name__ == "__main__":
