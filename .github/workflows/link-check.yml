@@ -27,7 +27,7 @@ jobs:
           python-version: "3.14"
       - name: Unit tests
         run: python -m unittest discover -s tools -p "test_*.py" -v
-      - name: Resolve every link here and in the profile copies
+      - name: Check repository and profile links
         env:
           # Read-only. Sent with the profile FORKS.md and llms.txt reads.
           GITHUB_TOKEN: ${{ github.token }}

@@ -88,6 +88,72 @@ class UrlPolicyTests(unittest.TestCase):
         self.assertIn("ok https://github.com/ryanduguid/Ozzit", output.getvalue())
         self.assertIn("ok https://github.com/ryanduguid/pyxero", output.getvalue())
         self.assertIn("across 3 files", output.getvalue())
+        self.assertIn("accepted automation denials: 0", output.getvalue())
+
+    def test_accepted_denials_are_counted_separately_from_resolved_links(self) -> None:
+        linkedin = check_links.LINKEDIN_IDENTITY_URL
+        for include_success in (False, True):
+            with self.subTest(include_success=include_success):
+                text = f"{linkedin}\n{linkedin}\n"
+                if include_success:
+                    text += "https://example.test/verified\n"
+
+                def resolve(url: str) -> tuple[int, str]:
+                    if url == linkedin:
+                        raise urllib.error.HTTPError(url, 999, "Denied", {}, None)
+                    return 200, url
+
+                output = io.StringIO()
+                with (
+                    patch.object(check_links, "FILES", []),
+                    patch.object(check_links, "PROFILE_FILES", ["FORKS.md"]),
+                    profile(**{"FORKS.md": text}),
+                    patch.object(check_links, "fetch_final_url", side_effect=resolve) as fetch,
+                    contextlib.redirect_stdout(output),
+                ):
+                    self.assertEqual(check_links.main(), 0)
+                self.assertEqual(fetch.call_count, 1 + int(include_success))
+                self.assertIn(
+                    f"resolved links: {int(include_success)}; accepted automation denials: 1",
+                    output.getvalue(),
+                )
+                self.assertIn("resolution unverified", output.getvalue())
+                self.assertNotIn(f"ok {linkedin}", output.getvalue())
+
+    def test_accepted_denials_do_not_hide_failures(self) -> None:
+        linkedin = check_links.LINKEDIN_IDENTITY_URL
+        broken = "https://example.test/broken"
+        renamed = "https://github.com/ryanduguid/old-name"
+        cases = [
+            (broken, urllib.error.HTTPError(broken, 999, "Denied", {}, None), "HTTP 999"),
+            (linkedin, urllib.error.HTTPError(linkedin, 404, "Not Found", {}, None), "HTTP 404"),
+            (broken, urllib.error.URLError("no network"), "no network"),
+            (renamed, (200, "https://github.com/ryanduguid/new-name"), "rename redirect"),
+            (broken, (199, broken), "HTTP 199"),
+            (broken, (302, broken), "HTTP 302"),
+        ]
+        for url, outcome, message in cases:
+            with self.subTest(message=message):
+                def resolve(target: str) -> tuple[int, str]:
+                    if target == url:
+                        if isinstance(outcome, Exception):
+                            raise outcome
+                        return outcome
+                    raise urllib.error.HTTPError(target, 999, "Denied", {}, None)
+
+                output = io.StringIO()
+                with (
+                    patch.object(check_links, "FILES", []),
+                    patch.object(check_links, "PROFILE_FILES", ["FORKS.md"]),
+                    profile(**{"FORKS.md": f"{linkedin}\n{url}\n"}),
+                    patch.object(check_links, "fetch_final_url", side_effect=resolve),
+                    contextlib.redirect_stdout(output),
+                ):
+                    self.assertEqual(check_links.main(), 1)
+                self.assertIn(message, output.getvalue())
+                self.assertNotIn("checks passed", output.getvalue())
+                self.assertNotIn("all clear", output.getvalue())
+                self.assertNotIn(f"ok {url}", output.getvalue())
 
     def test_a_profile_llms_repository_path_that_404s_fails(self) -> None:
         gone = "https://github.com/ryanduguid/australian-accounting/tree/main/packages/gone"

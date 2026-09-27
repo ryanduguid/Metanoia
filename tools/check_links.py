@@ -8,7 +8,8 @@ and bare URLs, then checks in order:
 2. Every github.com/ryanduguid/<repo> link resolves to that exact repository.
    A rename redirect (301 to a different repo path) is a FAILURE even though
    the request ends in a 200, because redirects break if the old name is reused.
-3. Every other absolute link resolves (2xx after redirects).
+3. Every other absolute link resolves (2xx after redirects), except the approved
+   LinkedIn identity's HTTP 999 automation denial, reported as unverified.
 4. Retired repository names and em or en dashes must not appear outside the
    allowed history notes in docs/MAINTAINING.md.
 5. The profile llms.txt names each component at the monorepo directory that
@@ -18,7 +19,7 @@ The profile files are read from raw.githubusercontent.com; GITHUB_TOKEN is
 sent when Actions provides it and is only ever used to read. A fetch that
 cannot complete is a failure, not a pass.
 
-Exit 0 clean, 1 on any failure. Stdlib only.
+Exit 0 when checks pass, including the accepted denial; 1 on any failure. Stdlib only.
 """
 
 from __future__ import annotations
@@ -220,7 +221,8 @@ def main() -> int:
             if ch in text:
                 failures.append(f"{rel}: {label} present")
 
-    checked = 0
+    resolved = 0
+    accepted_denials = 0
     for url, src in sorted(urls.items()):
         if url.startswith("http:"):
             failures.append(f"{src}: insecure link {url}")
@@ -228,11 +230,11 @@ def main() -> int:
         # Badge URLs encode label text, not a resource that can 404 meaningfully.
         if url.startswith("https://img.shields.io/badge/"):
             continue
-        checked += 1
         try:
             status, final = fetch_final_url(url)
         except urllib.error.HTTPError as exc:
             if is_accepted_automation_denial(url, exc.code):
+                accepted_denials += 1
                 print(
                     f"accepted automation denial {url} -> HTTP {exc.code} "
                     "(exact LinkedIn identity URL; automated requests are blocked)"
@@ -243,7 +245,7 @@ def main() -> int:
         except Exception as exc:  # noqa: BLE001 - report every failure mode
             failures.append(f"{src}: {url} -> {exc}")
             continue
-        if status >= 400:
+        if not 200 <= status < 300:
             failures.append(f"{src}: {url} -> HTTP {status}")
             continue
         name = own_repository(url)
@@ -254,6 +256,7 @@ def main() -> int:
                     f"{src}: {url} redirected to {final} (rename redirect, repoint the link)"
                 )
                 continue
+        resolved += 1
         print(f"ok {url}")
 
     if failures:
@@ -261,7 +264,12 @@ def main() -> int:
         for f in failures:
             print(f"  FAIL {f}")
         return 1
-    print(f"\nall clear: {checked} links resolved across {len(sources)} files")
+    file_label = "file" if len(sources) == 1 else "files"
+    print(
+        f"\nchecks passed across {len(sources)} {file_label}: "
+        f"resolved links: {resolved}; accepted automation denials: {accepted_denials} "
+        "(resolution unverified)"
+    )
     return 0
 
 
