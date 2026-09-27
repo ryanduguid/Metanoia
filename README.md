@@ -6,7 +6,7 @@ The public profile README, the fork map `FORKS.md` and the profile `llms.txt` li
 
 ## What is here
 
-- `tools/check_links.py` resolves every link in this repository and in the profile repository's published `FORKS.md` and `llms.txt`, fails on rename redirects, retired names and dashes, and checks that the profile `llms.txt` names each component at its maintained directory. It runs in `.github/workflows/link-check.yml`.
+- `tools/check_links.py` checks links in `AGENTS.md`, `README.md`, `SECURITY.md`, `docs/` and the profile repository's published `FORKS.md` and `llms.txt`. It fails on rename redirects, retired names and dashes, and checks that the profile `llms.txt` names each component at its maintained directory. The approved LinkedIn identity's HTTP 999 automation denial is non-fatal and reported separately as unverified. The checker runs in `.github/workflows/link-check.yml`.
 - `tools/test_*.py` are the unit tests for the link policy and the repository identity records.
 
 ## Documentation

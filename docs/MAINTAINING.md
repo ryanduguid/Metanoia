@@ -18,7 +18,7 @@ How to report a security concern is in [SECURITY.md](../SECURITY.md). Account-wi
 | `docs/MAINTAINING.md` | This runbook |
 | `tools/check_links.py` | Link resolver behind `link-check.yml`; also checks the profile repository's published `FORKS.md` and `llms.txt` |
 | `tools/test_*.py` | Unit tests for the link policy and repository identity |
-| `.github/workflows/link-check.yml` | CI: unit tests, then resolves every link here and in the profile `FORKS.md` and `llms.txt` and fails on rename redirects, retired names, dashes and a profile `llms.txt` component that is not at its maintained directory (needs the read-only workflow token for the profile reads) |
+| `.github/workflows/link-check.yml` | CI: unit tests, then link checks here and in the profile `FORKS.md` and `llms.txt`. Reports accepted automation denials separately and fails on rename redirects, retired names, dashes and a profile `llms.txt` component that is not at its maintained directory. Uses the read-only workflow token for profile reads |
 
 ## Updating the public README
 
@@ -88,4 +88,4 @@ Forks used only to send upstream pull requests stay out of the product list.
 - Treating mentions of Xero, the ATO, CA ANZ or SAP as proof of employment, partnership, approval, registration or endorsement.
 - Using retired repository names (`CharlesHenryWickens`, `JohnKenley`, `JohnSpenceOgilvy`, `MaryAddisonHamilton`, `ElizabethAnneAlexander`, `RaymondChambers`, `RussellMathews`, `SirArthurFadden`, `SirAlexanderFitzgerald`, `EdwinNixon`, `LouisGoldberg`) in new copy.
 
-CI runs `.github/workflows/link-check.yml`: every link in README.md, SECURITY.md, docs/ and the profile repository's published `FORKS.md` and `llms.txt` (read from `raw.githubusercontent.com`) must resolve, links must be https, a `github.com/ryanduguid/...` link that only works through a rename redirect fails the build, retired names and dashes fail it, and the profile `llms.txt` must name each component at the monorepo directory recorded in `tools/check_links.py`. A profile read that cannot complete fails the build.
+CI runs `.github/workflows/link-check.yml`: links in AGENTS.md, README.md, SECURITY.md, docs/ and the profile repository's published `FORKS.md` and `llms.txt` must return 2xx after redirects. An HTTP 999 response for the approved LinkedIn identity is non-fatal and reported separately as unverified. Links must use https. A `github.com/ryanduguid/...` link that only works through a rename redirect fails the build, as do retired names and dashes. The profile `llms.txt` must name each component at the monorepo directory recorded in `tools/check_links.py`. Profile files are read from `raw.githubusercontent.com`; a read that cannot complete fails the build.
