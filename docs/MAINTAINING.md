@@ -34,14 +34,14 @@ Pins live only in the GitHub UI; the README has no pinned section. The pin recor
 
 Change pins in the GitHub UI (**Customize your pins**). After saving, check https://github.com/ryanduguid for the heading **Pinned** (not **Popular**).
 
-The approved pin order for the proof-of-use pass is:
+The approved pin order, applied on 28 September 2026, is:
 
-1. `accounting-review-pipeline`
-2. `Ozzit`
-3. `australian-accounting`
-4. `australian-accounting-skills`
-5. `llm-tax-guardrails`
-6. `au-tax-legislation-corpus`
+1. `au-fpa-pack`
+2. `accounting-review-pipeline`
+3. `Ozzit`
+4. `australian-accounting`
+5. `australian-accounting-skills`
+6. `llm-tax-guardrails`
 
 Verify the live order after saving. GitHub has previously failed to persist drag reordering; unpinning and re-ticking in the intended sequence is the fallback. Pins follow repository node IDs through renames. The profile README deliberately has no duplicate pin catalogue. Keep infrastructure and contribution forks out of the pins.
 
