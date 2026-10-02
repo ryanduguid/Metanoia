@@ -72,7 +72,7 @@ OWN_REPO = re.compile(r"^https://github\.com/ryanduguid/([A-Za-z0-9._-]+)", re.I
 # that moved out of a monorepo fails this build instead of rotting on the
 # profile.
 LLMS_COMPONENTS = {
-    "Aus Accounting MCP": "australian-accounting/tree/main/apps/aus-accounting-mcp",
+    "aus-accounting-mcp": "australian-accounting/tree/main/apps/aus-accounting-mcp",
     "payday-super-checker": "australian-accounting/tree/main/packages/payday-super-checker",
     "ato-benchmark-compare": "australian-accounting/tree/main/packages/ato-benchmark-compare",
     "TheExchequerTally": "australian-accounting/tree/main/packages/the-exchequer-tally",
@@ -83,9 +83,11 @@ LLMS_COMPONENTS = {
     "Monthly Close Controls": "accounting-review-pipeline/tree/main/packages/monthly-close-control-plane",
     "Xero Ledger Review Gate": "accounting-review-pipeline/tree/main/packages/elizabeth-anne-alexander",
     "Australian Accounting Power BI": "accounting-review-pipeline/tree/main/apps/australian-accounting-power-bi",
-    "Hardhat Ledger workflows": "australian-accounting-skills",
+    "australian-accounting-skills": "australian-accounting-skills",
 }
-LLMS_ENTRY = re.compile(r"^- \*\*([^*]+)\*\* \((https://[^)]+)\):", re.MULTILINE)
+LLMS_ENTRY = re.compile(
+    r"^- (?:\*\*([^*]+)\*\* \(|\[([^\]]+)\]\()(https://[^)]+)\):", re.MULTILINE
+)
 
 # A Markdown target that is not a URL, a mail link or a bare anchor: that is a
 # path inside the repository, and it can be misspelt.
@@ -140,7 +142,8 @@ def llms_index_failures(text: str) -> list[str]:
     github.com/ryanduguid entries must be exactly the maintained directory.
     """
     links: dict[str, set[str]] = {}
-    for name, url in LLMS_ENTRY.findall(text):
+    for bold_name, markdown_name, url in LLMS_ENTRY.findall(text):
+        name = bold_name or markdown_name
         if own_repository(url):
             links.setdefault(name, set()).add(url)
     failures: list[str] = []
