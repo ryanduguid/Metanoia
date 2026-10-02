@@ -29,6 +29,7 @@ import re
 import sys
 import time
 import urllib.error
+import urllib.parse
 import urllib.request
 from datetime import timezone
 from email.utils import parsedate_to_datetime
@@ -106,12 +107,60 @@ LINK_RES = [
 ]
 
 
+def _https_origin(url: str) -> tuple[str, int]:
+    parts = urllib.parse.urlsplit(url)
+    if parts.scheme.casefold() != "https" or not parts.hostname:
+        raise ValueError("only absolute HTTPS URLs are permitted")
+    port = parts.port
+    return parts.hostname.casefold(), 443 if port is None else port
+
+
+class _HttpsRedirectHandler(urllib.request.HTTPRedirectHandler):
+    def http_error_302(self, req, fp, code, msg, headers):
+        try:
+            return super().http_error_302(req, fp, code, msg, headers)
+        finally:
+            fp.close()
+
+    http_error_301 = http_error_303 = http_error_307 = http_error_308 = http_error_302
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        redirected = super().redirect_request(req, fp, code, msg, headers, newurl)
+        if redirected is None:
+            return None
+        try:
+            source_origin = _https_origin(req.full_url)
+            target_origin = _https_origin(redirected.full_url)
+        except ValueError as exc:
+            raise urllib.error.HTTPError(
+                redirected.full_url, code, "redirect target must use valid HTTPS", headers, fp
+            ) from exc
+        if source_origin != target_origin:
+            redirected.remove_header("Authorization")
+        return redirected
+
+
+_URL_OPENER = urllib.request.build_opener(_HttpsRedirectHandler())
+
+
+def _fresh_request(template: urllib.request.Request) -> urllib.request.Request:
+    request = urllib.request.Request(
+        template.full_url, data=template.data, headers=dict(template.headers),
+        origin_req_host=template.origin_req_host, unverifiable=template.unverifiable,
+        method=template.get_method(),
+    )
+    for name, value in template.unredirected_hdrs.items():
+        request.add_unredirected_header(name, value)
+    return request
+
+
 def _request_url(request: urllib.request.Request, consume):
     """Bound sleeps to 30 seconds; each GET keeps its own 30-second timeout."""
+    _https_origin(request.full_url)
     waited = 0.0
     for attempt in range(1, MAX_FETCH_ATTEMPTS + 1):
         try:
-            with urllib.request.urlopen(request, timeout=30) as response:
+            with _URL_OPENER.open(_fresh_request(request), timeout=30) as response:
                 return consume(response)
         except (urllib.error.URLError, TimeoutError) as exc:
             retry_after = ""

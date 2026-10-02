@@ -9,6 +9,7 @@ import io
 import tempfile
 import unittest
 import urllib.error
+import urllib.response
 from pathlib import Path
 from unittest.mock import MagicMock, call, patch
 
@@ -47,6 +48,236 @@ def profile(**files: str):
     return patch.object(check_links, "fetch_profile_file", fetch)
 
 
+class RedirectFixture(urllib.request.HTTPSHandler):
+    """Return HTTPS responses in memory; never connect to a server."""
+    def __init__(self, loop: bool = False):
+        super().__init__()
+        self.loop = loop
+        self.start_reads = 0
+        self.final_reads = 0
+        self.bodies: list[io.BytesIO] = []
+
+    def https_open(self, request):
+        headers = email.message.Message()
+        if request.full_url == "https://example.test/start":
+            self.start_reads += 1
+            headers["Location"] = "/start" if self.loop else "/final"
+            code = 302
+        elif request.full_url == "https://example.test/final" and not self.loop:
+            self.final_reads += 1
+            code = 503 if self.final_reads < 5 else 200
+        else:
+            raise AssertionError("unexpected fixture URL")
+        body = io.BytesIO(b"fixture")
+        self.bodies.append(body)
+        response = urllib.response.addinfourl(body, headers, request.full_url, code)
+        response.msg = "Fixture"
+        return response
+
+
+class RedirectPolicyTests(unittest.TestCase):
+    def test_proxy_retries_remain_https_with_fresh_requests(self) -> None:
+        class ProxyFixture(urllib.request.HTTPHandler, urllib.request.HTTPSHandler):
+            def __init__(self):
+                super().__init__()
+                self.calls = []
+
+            def reply(self, request, protocol):
+                self.calls.append((protocol, request.type, request.host, request.selector,
+                                   request._tunnel_host, request.get_header("Authorization")))
+                if len(self.calls) < 3:
+                    raise urllib.error.URLError("fixture transport failure")
+                response = urllib.response.addinfourl(
+                    io.BytesIO(b"fixture"), email.message.Message(), request.full_url, 200
+                )
+                response.msg = "Fixture"
+                return response
+
+            def https_open(self, request):
+                return self.reply(request, "https")
+
+            def http_open(self, request):
+                return self.reply(request, "http")
+
+        fixture = ProxyFixture()
+        opener = urllib.request.build_opener(
+            urllib.request.ProxyHandler({"https": "http://proxy.test:3128"}),
+            fixture, check_links._HttpsRedirectHandler(),
+        )
+        request = urllib.request.Request(
+            "https://example.test/source", headers={"Authorization": "Bearer synthetic-value"}
+        )
+        with (
+            patch.object(check_links, "_URL_OPENER", opener),
+            patch("urllib.request.proxy_bypass", return_value=False),
+            patch("time.sleep"),
+        ):
+            self.assertEqual(check_links._request_url(request, lambda response: response.status), 200)
+        self.assertEqual(fixture.calls, [
+            ("https", "https", "proxy.test:3128", "/source", "example.test", "Bearer synthetic-value")
+        ] * 3)
+        self.assertEqual(request.type, "https")
+        self.assertEqual(request.host, "example.test")
+        self.assertIsNone(request._tunnel_host)
+
+    def test_redirect_body_failures_close_before_retrying(self) -> None:
+        for status in (301, 302, 303, 307, 308):
+            handler = check_links._HttpsRedirectHandler()
+            parent = MagicMock()
+            handler.add_parent(parent)
+            request = urllib.request.Request("https://example.test/start")
+            request.timeout = 30
+            body = MagicMock()
+            body.read.side_effect = TimeoutError("fixture redirect body timeout")
+            headers = email.message.Message()
+            headers["Location"] = "/next"
+            with self.subTest(status=status), self.assertRaises(TimeoutError):
+                getattr(handler, f"http_error_{status}")(request, body, status, "Found", headers)
+            body.close.assert_called()
+            parent.open.assert_not_called()
+
+    def test_malformed_redirect_location_closes_its_response(self) -> None:
+        handler = check_links._HttpsRedirectHandler()
+        parent = MagicMock()
+        handler.add_parent(parent)
+        body = MagicMock()
+        headers = email.message.Message()
+        headers["Location"] = "https://[broken/"
+        with self.assertRaises(ValueError):
+            handler.http_error_302(
+                urllib.request.Request("https://example.test/start"), body, 302, "Found", headers
+            )
+        body.close.assert_called()
+        parent.open.assert_not_called()
+
+    def test_redirected_transient_failure_can_reach_the_fifth_attempt(self) -> None:
+        fixture = RedirectFixture()
+        opener = urllib.request.build_opener(fixture, check_links._HttpsRedirectHandler())
+        with patch.object(check_links, "_URL_OPENER", opener), patch("time.sleep") as sleep:
+            self.assertEqual(check_links.fetch_final_url("https://example.test/start"),
+                             (200, "https://example.test/final"))
+        self.assertEqual(fixture.start_reads, 5)
+        self.assertEqual(fixture.final_reads, 5)
+        self.assertEqual(sleep.call_args_list, [call(1), call(2), call(4), call(8)])
+        self.assertTrue(all(body.closed for body in fixture.bodies))
+
+    def test_redirect_loops_remain_refused_without_retrying(self) -> None:
+        fixture = RedirectFixture(loop=True)
+        opener = urllib.request.build_opener(fixture, check_links._HttpsRedirectHandler())
+        with (
+            patch.object(check_links, "_URL_OPENER", opener),
+            patch("time.sleep") as sleep,
+            self.assertRaises(urllib.error.HTTPError) as raised,
+        ):
+            check_links.fetch_final_url("https://example.test/start")
+        self.assertEqual(raised.exception.code, 302)
+        self.assertEqual(fixture.start_reads, 5)
+        sleep.assert_not_called()
+        self.assertTrue(all(body.closed for body in fixture.bodies))
+
+    def test_non_https_and_malformed_initial_urls_never_open_or_sleep(self) -> None:
+        for url in (
+            "http://example.test/", "ftp://example.test/file", "file:///tmp/example",
+            "https:///missing-host", "https://example.test:invalid/",
+        ):
+            with (
+                self.subTest(url=url),
+                patch.object(check_links._URL_OPENER, "open") as opener,
+                patch("time.sleep") as sleep,
+                self.assertRaises(ValueError),
+            ):
+                check_links.fetch_final_url(url)
+            opener.assert_not_called()
+            sleep.assert_not_called()
+
+    def test_https_origin_normalises_case_and_default_port(self) -> None:
+        self.assertEqual(
+            check_links._https_origin("HTTPS://EXAMPLE.TEST/start"),
+            check_links._https_origin("https://example.test:443/next"),
+        )
+        self.assertNotEqual(
+            check_links._https_origin("https://example.test:0/"),
+            check_links._https_origin("https://example.test/"),
+        )
+
+    def test_only_valid_https_redirects_are_opened(self) -> None:
+        for status in (301, 302, 303, 307, 308):
+            for target, allowed in (
+                ("https://example.test/next", True), ("https://other.test/next", True),
+                ("/next", True), ("http://example.test/next", False),
+                ("ftp://example.test/next", False), ("file:///tmp/example", False),
+                ("https://example.test:invalid/next", False),
+            ):
+                handler = check_links._HttpsRedirectHandler()
+                parent = MagicMock()
+                handler.add_parent(parent)
+                body = io.BytesIO(b"redirect")
+                headers = email.message.Message()
+                headers["Location"] = target
+                request = urllib.request.Request("https://example.test/start")
+                request.timeout = 30
+                with self.subTest(status=status, target=target):
+                    try:
+                        if allowed:
+                            result = handler.http_error_302(request, body, status, "Found", headers)
+                            self.assertIs(result, parent.open.return_value)
+                            redirected = parent.open.call_args.args[0]
+                            self.assertEqual(redirected.full_url,
+                                             "https://example.test/next" if target == "/next" else target)
+                            self.assertTrue(body.closed)
+                        else:
+                            with self.assertRaises(urllib.error.HTTPError) as raised:
+                                handler.http_error_302(request, body, status, "Found", headers)
+                            self.assertEqual(raised.exception.code, status)
+                            raised.exception.close()
+                            parent.open.assert_not_called()
+                    finally:
+                        body.close()
+
+    def test_authorization_stays_only_on_the_same_https_origin(self) -> None:
+        for target, retained in (
+            ("https://example.test/next", True), ("https://EXAMPLE.TEST:443/next", True),
+            ("https://other.test/next", False), ("https://example.test:444/next", False),
+            ("https://example.test:0/next", False),
+        ):
+            request = urllib.request.Request(
+                "https://example.test/start",
+                headers={"Authorization": "Bearer synthetic-value", "User-Agent": "fixture"},
+            )
+            with self.subTest(target=target):
+                redirected = check_links._HttpsRedirectHandler().redirect_request(
+                    request, None, 302, "Found", {}, target
+                )
+                self.assertEqual(redirected.get_header("Authorization"),
+                                 "Bearer synthetic-value" if retained else None)
+                self.assertEqual(redirected.get_header("User-agent"), "fixture")
+                self.assertEqual(request.get_header("Authorization"), "Bearer synthetic-value")
+
+    def test_authorization_is_not_restored_when_redirects_return_to_origin(self) -> None:
+        handler = check_links._HttpsRedirectHandler()
+        original = urllib.request.Request(
+            "https://example.test/start", headers={"Authorization": "Bearer synthetic-value"}
+        )
+        other = handler.redirect_request(original, None, 302, "Found", {}, "https://other.test/")
+        returned = handler.redirect_request(other, None, 302, "Found", {}, "https://example.test/")
+        self.assertFalse(other.has_header("Authorization"))
+        self.assertFalse(returned.has_header("Authorization"))
+
+    def test_blocked_redirect_closes_and_does_not_retry(self) -> None:
+        body = io.BytesIO(b"redirect")
+        error = urllib.error.HTTPError("http://example.test/", 302, "Blocked", {}, body)
+        with (
+            patch.object(check_links._URL_OPENER, "open", side_effect=error) as opener,
+            patch("time.sleep") as sleep,
+            self.assertRaises(urllib.error.HTTPError) as raised,
+        ):
+            check_links.fetch_final_url("https://example.test/")
+        self.assertIs(raised.exception, error)
+        opener.assert_called_once()
+        sleep.assert_not_called()
+        self.assertTrue(body.closed)
+
+
 class RetryTests(unittest.TestCase):
     def test_profile_body_failure_retries_and_closes_responses(self) -> None:
         for error in (TimeoutError("body timeout"), urllib.error.URLError("body unavailable")):
@@ -54,9 +285,10 @@ class RetryTests(unittest.TestCase):
             failed.__enter__.return_value.read.side_effect = error
             with (
                 self.subTest(error=error),
-                patch.dict(check_links.os.environ, {"GITHUB_TOKEN": "synthetic-value"}),
+                # Dummy token tests header preservation; this is not a credential.
+                patch.dict(check_links.os.environ, {"GITHUB_TOKEN": "synthetic-value"}),  # nosec B105
                 patch.object(
-                    check_links.urllib.request, "urlopen", side_effect=[failed, successful]
+                    check_links._URL_OPENER, "open", side_effect=[failed, successful]
                 ) as opener,
                 patch("time.sleep") as sleep,
             ):
@@ -66,7 +298,9 @@ class RetryTests(unittest.TestCase):
             failed.__exit__.assert_called_once()
             successful.__exit__.assert_called_once()
             first, second = (item.args[0] for item in opener.call_args_list)
-            self.assertIs(first, second)
+            self.assertIsNot(first, second)
+            self.assertEqual(first.full_url, second.full_url)
+            self.assertEqual(first.header_items(), second.header_items())
             self.assertEqual(first.get_method(), "GET")
             self.assertEqual(first.get_header("User-agent"), check_links.USER_AGENT)
             self.assertEqual(first.get_header("Authorization"), "Bearer synthetic-value")
@@ -80,7 +314,7 @@ class RetryTests(unittest.TestCase):
             with (
                 self.subTest(error_type=error_type),
                 patch.object(
-                    check_links.urllib.request, "urlopen", side_effect=responses
+                    check_links._URL_OPENER, "open", side_effect=responses
                 ) as opener,
                 patch("time.sleep") as sleep,
                 self.assertRaises(error_type) as raised,
@@ -98,9 +332,10 @@ class RetryTests(unittest.TestCase):
             error = urllib.error.HTTPError("https://example.test", 503, "Wait", {}, body)
             response = self.response()
             with (
-                patch.dict(check_links.os.environ, {"GITHUB_TOKEN": "synthetic-value"}),
+                # Dummy token tests header preservation; this is not a credential.
+                patch.dict(check_links.os.environ, {"GITHUB_TOKEN": "synthetic-value"}),  # nosec B105
                 patch.object(
-                    check_links.urllib.request, "urlopen", side_effect=[error, response]
+                    check_links._URL_OPENER, "open", side_effect=[error, response]
                 ) as opener,
                 patch("time.sleep"),
             ):
@@ -108,7 +343,9 @@ class RetryTests(unittest.TestCase):
             self.assertTrue(body.closed)
             response.__exit__.assert_called_once()
             first, second = (item.args[0] for item in opener.call_args_list)
-            self.assertIs(first, second)
+            self.assertIsNot(first, second)
+            self.assertEqual(first.full_url, second.full_url)
+            self.assertEqual(first.header_items(), second.header_items())
             self.assertEqual(first.get_method(), "GET")
             self.assertEqual(first.get_header("User-agent"), check_links.USER_AGENT)
             self.assertEqual(
@@ -118,7 +355,7 @@ class RetryTests(unittest.TestCase):
         response = self.response()
         response.__enter__.return_value.read.return_value = b"\xff"
         with (
-            patch.object(check_links.urllib.request, "urlopen", return_value=response) as opener,
+            patch.object(check_links._URL_OPENER, "open", return_value=response) as opener,
             patch("time.sleep") as sleep,
             self.assertRaises(UnicodeDecodeError),
         ):
@@ -135,7 +372,7 @@ class RetryTests(unittest.TestCase):
                 for body in bodies
             ]
             with (
-                patch.object(check_links.urllib.request, "urlopen", side_effect=errors) as opener,
+                patch.object(check_links._URL_OPENER, "open", side_effect=errors) as opener,
                 patch("time.sleep"),
                 self.assertRaises(urllib.error.HTTPError) as raised,
             ):
@@ -168,8 +405,7 @@ class RetryTests(unittest.TestCase):
                 with (
                     self.subTest(profile_file=profile_file, error=error),
                     patch.object(
-                        check_links.urllib.request,
-                        "urlopen",
+                        check_links._URL_OPENER, "open",
                         side_effect=[error, error, self.response()],
                     ) as opener,
                     patch("time.sleep") as sleep,
@@ -189,7 +425,7 @@ class RetryTests(unittest.TestCase):
                 with (
                     self.subTest(profile_file=profile_file, status=status),
                     patch.object(
-                        check_links.urllib.request, "urlopen", side_effect=error
+                        check_links._URL_OPENER, "open", side_effect=error
                     ) as opener,
                     patch("time.sleep") as sleep,
                     self.assertRaises(urllib.error.HTTPError) as raised,
@@ -209,7 +445,7 @@ class RetryTests(unittest.TestCase):
                 with (
                     self.subTest(profile_file=profile_file, error=error),
                     patch.object(
-                        check_links.urllib.request, "urlopen", side_effect=error
+                        check_links._URL_OPENER, "open", side_effect=error
                     ) as opener,
                     patch("time.sleep") as sleep,
                     self.assertRaises(type(error)) as raised,
@@ -238,8 +474,7 @@ class RetryTests(unittest.TestCase):
                     with (
                         self.subTest(profile_file=profile_file, status=status, header=header),
                         patch.object(
-                            check_links.urllib.request,
-                            "urlopen",
+                            check_links._URL_OPENER, "open",
                             side_effect=[error, self.response()],
                         ) as opener,
                         patch("time.sleep") as sleep,
@@ -258,7 +493,7 @@ class RetryTests(unittest.TestCase):
             headers["Retry-After"] = "20"
             error = urllib.error.HTTPError("https://example.test", 429, "Wait", headers, None)
             with (
-                patch.object(check_links.urllib.request, "urlopen", side_effect=error) as opener,
+                patch.object(check_links._URL_OPENER, "open", side_effect=error) as opener,
                 patch("time.sleep") as sleep,
                 self.assertRaises(urllib.error.HTTPError),
             ):
