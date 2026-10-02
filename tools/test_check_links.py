@@ -17,6 +17,22 @@ GOOD_LLMS = "".join(
     for name, location in check_links.LLMS_COMPONENTS.items()
 )
 
+# The profile's published Markdown format and current component labels.
+MARKDOWN_LLMS = """\
+- [aus-accounting-mcp](https://github.com/ryanduguid/australian-accounting/tree/main/apps/aus-accounting-mcp): server
+- [payday-super-checker](https://github.com/ryanduguid/australian-accounting/tree/main/packages/payday-super-checker): timelines
+- [ato-benchmark-compare](https://github.com/ryanduguid/australian-accounting/tree/main/packages/ato-benchmark-compare): benchmarks
+- [TheExchequerTally](https://github.com/ryanduguid/australian-accounting/tree/main/packages/the-exchequer-tally): company tax
+- [SolomonsSword](https://github.com/ryanduguid/australian-accounting/tree/main/packages/solomons-sword): trust income
+- [xero-trial-balance-export](https://github.com/ryanduguid/accounting-review-pipeline/tree/main/packages/xero-trial-balance-export): exports
+- [Monthly Close Controls](https://github.com/ryanduguid/accounting-review-pipeline/tree/main/packages/monthly-close-control-plane): close checks
+- [Workpaper Review Gate](https://github.com/ryanduguid/accounting-review-pipeline/tree/main/packages/review-ready-gate): pack checks
+- [Xero Ledger Review Gate](https://github.com/ryanduguid/accounting-review-pipeline/tree/main/packages/elizabeth-anne-alexander): synthetic review
+- [accounting-excel-toolkit](https://github.com/ryanduguid/accounting-review-pipeline/tree/main/adapters/accounting-excel-toolkit): Excel
+- [Australian Accounting Power BI](https://github.com/ryanduguid/accounting-review-pipeline/tree/main/apps/australian-accounting-power-bi): analytics
+- [australian-accounting-skills](https://github.com/ryanduguid/australian-accounting-skills): skills
+"""
+
 
 def profile(**files: str):
     """Patch the profile reads with fixed text; missing names raise like a 404."""
@@ -213,6 +229,23 @@ class UrlPolicyTests(unittest.TestCase):
             check_links.normalise_url("https://duguid.com.au/`"),
             "https://duguid.com.au/",
         )
+
+    def test_published_markdown_index_preserves_component_validation(self) -> None:
+        self.assertEqual(check_links.llms_index_failures(MARKDOWN_LLMS), [])
+        missing = MARKDOWN_LLMS.replace(
+            "- [aus-accounting-mcp](https://github.com/ryanduguid/australian-accounting/tree/main/apps/aus-accounting-mcp): server\n",
+            "",
+        )
+        moved = MARKDOWN_LLMS.replace(
+            "australian-accounting/tree/main/packages/payday-super-checker",
+            "payday-super-checker",
+        )
+        duplicate = MARKDOWN_LLMS + (
+            "- [payday-super-checker](https://github.com/ryanduguid/payday-super-checker): stale\n"
+        )
+        for text in (missing, moved, duplicate):
+            with self.subTest(text=text):
+                self.assertEqual(len(check_links.llms_index_failures(text)), 1)
 
     def test_accepts_only_the_linkedin_identity_automation_denial(self) -> None:
         linkedin = "https://www.linkedin.com/in/ryan-duguid/"
