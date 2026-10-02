@@ -27,8 +27,11 @@ from __future__ import annotations
 import os
 import re
 import sys
+import time
 import urllib.error
 import urllib.request
+from datetime import timezone
+from email.utils import parsedate_to_datetime
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -61,6 +64,8 @@ RETIRED_NAMES = [
 RETIRED_NAME_ALLOWANCE = {"docs/MAINTAINING.md": 2}
 
 USER_AGENT = "ryanduguid-profile-link-check"
+MAX_FETCH_ATTEMPTS = 5
+MAX_RETRY_WAIT_SECONDS = 30
 # The display profile repository, whose published copies are checked here.
 PROFILE_RAW = "https://raw.githubusercontent.com/ryanduguid/ryanduguid/main/"
 LINKEDIN_IDENTITY_URL = "https://www.linkedin.com/in/ryan-duguid/"
@@ -101,10 +106,43 @@ LINK_RES = [
 ]
 
 
+def _request_url(request: urllib.request.Request, consume):
+    """Bound sleeps to 30 seconds; each GET keeps its own 30-second timeout."""
+    waited = 0.0
+    for attempt in range(1, MAX_FETCH_ATTEMPTS + 1):
+        try:
+            with urllib.request.urlopen(request, timeout=30) as response:
+                return consume(response)
+        except (urllib.error.URLError, TimeoutError) as exc:
+            retry_after = ""
+            if isinstance(exc, urllib.error.HTTPError):
+                retry_after = (exc.headers or {}).get("Retry-After", "").strip()
+                exc.close()
+                if exc.code != 429 and not 500 <= exc.code < 600:
+                    raise
+            if attempt == MAX_FETCH_ATTEMPTS:
+                raise
+            delay = float(2 ** (attempt - 1))
+            if re.fullmatch(r"[0-9]+", retry_after):
+                delay = float(retry_after)
+            elif retry_after:
+                try:
+                    retry_at = parsedate_to_datetime(retry_after)
+                    if retry_at.tzinfo is None:
+                        retry_at = retry_at.replace(tzinfo=timezone.utc)
+                    delay = max(0.0, retry_at.timestamp() - time.time())
+                except (ValueError, TypeError, OverflowError):
+                    pass
+            if waited + delay > MAX_RETRY_WAIT_SECONDS:
+                raise
+            time.sleep(delay)
+            waited += delay
+    raise AssertionError("unreachable")
+
+
 def fetch_final_url(url: str) -> tuple[int, str]:
     req = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
-    with urllib.request.urlopen(req, timeout=30) as resp:
-        return resp.status, resp.geturl()
+    return _request_url(req, lambda response: (response.status, response.geturl()))
 
 
 def normalise_url(url: str) -> str:
@@ -131,8 +169,7 @@ def fetch_profile_file(name: str) -> str:
     if token:
         headers["Authorization"] = f"Bearer {token}"
     req = urllib.request.Request(PROFILE_RAW + name, headers=headers)
-    with urllib.request.urlopen(req, timeout=30) as resp:
-        return resp.read().decode("utf-8")
+    return _request_url(req, lambda response: response.read()).decode("utf-8")
 
 
 def llms_index_failures(text: str) -> list[str]:

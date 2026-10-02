@@ -3,12 +3,14 @@
 from __future__ import annotations
 
 import contextlib
+import email.message
+import email.utils
 import io
 import tempfile
 import unittest
 import urllib.error
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import MagicMock, call, patch
 
 import check_links
 
@@ -43,6 +45,226 @@ def profile(**files: str):
         return files[name]
 
     return patch.object(check_links, "fetch_profile_file", fetch)
+
+
+class RetryTests(unittest.TestCase):
+    def test_profile_body_failure_retries_and_closes_responses(self) -> None:
+        for error in (TimeoutError("body timeout"), urllib.error.URLError("body unavailable")):
+            failed, successful = self.response(), self.response()
+            failed.__enter__.return_value.read.side_effect = error
+            with (
+                self.subTest(error=error),
+                patch.dict(check_links.os.environ, {"GITHUB_TOKEN": "synthetic-value"}),
+                patch.object(
+                    check_links.urllib.request, "urlopen", side_effect=[failed, successful]
+                ) as opener,
+                patch("time.sleep") as sleep,
+            ):
+                self.assertEqual(self.fetch(True), "profile text")
+            self.assertEqual(opener.call_count, 2)
+            sleep.assert_called_once_with(1)
+            failed.__exit__.assert_called_once()
+            successful.__exit__.assert_called_once()
+            first, second = (item.args[0] for item in opener.call_args_list)
+            self.assertIs(first, second)
+            self.assertEqual(first.get_method(), "GET")
+            self.assertEqual(first.get_header("User-agent"), check_links.USER_AGENT)
+            self.assertEqual(first.get_header("Authorization"), "Bearer synthetic-value")
+
+    def test_profile_body_exhaustion_shares_the_attempt_and_wait_budget(self) -> None:
+        for error_type in (TimeoutError, urllib.error.URLError):
+            responses = [self.response() for _ in range(5)]
+            errors = [error_type(f"body failure {attempt}") for attempt in range(5)]
+            for response, error in zip(responses, errors):
+                response.__enter__.return_value.read.side_effect = error
+            with (
+                self.subTest(error_type=error_type),
+                patch.object(
+                    check_links.urllib.request, "urlopen", side_effect=responses
+                ) as opener,
+                patch("time.sleep") as sleep,
+                self.assertRaises(error_type) as raised,
+            ):
+                self.fetch(True)
+            self.assertIs(raised.exception, errors[-1])
+            self.assertEqual(opener.call_count, 5)
+            self.assertEqual(sleep.call_args_list, [call(1), call(2), call(4), call(8)])
+            for response in responses:
+                response.__exit__.assert_called_once()
+
+    def test_responses_close_and_requests_keep_their_headers(self) -> None:
+        for profile_file in (False, True):
+            body = io.BytesIO(b"unavailable")
+            error = urllib.error.HTTPError("https://example.test", 503, "Wait", {}, body)
+            response = self.response()
+            with (
+                patch.dict(check_links.os.environ, {"GITHUB_TOKEN": "synthetic-value"}),
+                patch.object(
+                    check_links.urllib.request, "urlopen", side_effect=[error, response]
+                ) as opener,
+                patch("time.sleep"),
+            ):
+                self.fetch(profile_file)
+            self.assertTrue(body.closed)
+            response.__exit__.assert_called_once()
+            first, second = (item.args[0] for item in opener.call_args_list)
+            self.assertIs(first, second)
+            self.assertEqual(first.get_method(), "GET")
+            self.assertEqual(first.get_header("User-agent"), check_links.USER_AGENT)
+            self.assertEqual(
+                first.get_header("Authorization"),
+                "Bearer synthetic-value" if profile_file else None,
+            )
+        response = self.response()
+        response.__enter__.return_value.read.return_value = b"\xff"
+        with (
+            patch.object(check_links.urllib.request, "urlopen", return_value=response) as opener,
+            patch("time.sleep") as sleep,
+            self.assertRaises(UnicodeDecodeError),
+        ):
+            self.fetch(True)
+        self.assertEqual(opener.call_count, 1)
+        sleep.assert_not_called()
+        response.__exit__.assert_called_once()
+
+    def test_http_exhaustion_closes_each_error(self) -> None:
+        for status, attempts in ((403, 1), (504, 5), (999, 1)):
+            bodies = [io.BytesIO(b"error") for _ in range(attempts)]
+            errors = [
+                urllib.error.HTTPError("https://example.test", status, "Error", {}, body)
+                for body in bodies
+            ]
+            with (
+                patch.object(check_links.urllib.request, "urlopen", side_effect=errors) as opener,
+                patch("time.sleep"),
+                self.assertRaises(urllib.error.HTTPError) as raised,
+            ):
+                self.fetch(False)
+            self.assertEqual(opener.call_count, attempts)
+            self.assertIs(raised.exception, errors[-1])
+            self.assertEqual(raised.exception.code, status)
+            self.assertTrue(all(body.closed for body in bodies))
+
+    def fetch(self, profile_file: bool) -> object:
+        if profile_file:
+            return check_links.fetch_profile_file("FORKS.md")
+        return check_links.fetch_final_url("https://example.test/page")
+
+    def response(self) -> MagicMock:
+        response = MagicMock()
+        response.__enter__.return_value.status = 200
+        response.__enter__.return_value.geturl.return_value = "https://example.test/final"
+        response.__enter__.return_value.read.return_value = b"profile text"
+        return response
+
+    def test_transient_failures_wait_before_retrying_both_reads(self) -> None:
+        for profile_file in (False, True):
+            for error in (
+                urllib.error.HTTPError("https://example.test", 503, "Unavailable", {}, None),
+                urllib.error.HTTPError("https://example.test", 504, "Timeout", {}, None),
+                urllib.error.URLError("temporary transport failure"),
+                TimeoutError("temporary timeout"),
+            ):
+                with (
+                    self.subTest(profile_file=profile_file, error=error),
+                    patch.object(
+                        check_links.urllib.request,
+                        "urlopen",
+                        side_effect=[error, error, self.response()],
+                    ) as opener,
+                    patch("time.sleep") as sleep,
+                ):
+                    result = self.fetch(profile_file)
+                self.assertEqual(opener.call_count, 3)
+                self.assertEqual(sleep.call_args_list, [call(1), call(2)])
+                self.assertEqual(
+                    result,
+                    "profile text" if profile_file else (200, "https://example.test/final"),
+                )
+
+    def test_permanent_errors_do_not_retry(self) -> None:
+        for profile_file in (False, True):
+            for status in (401, 403, 404, 999):
+                error = urllib.error.HTTPError("https://example.test", status, "Denied", {}, None)
+                with (
+                    self.subTest(profile_file=profile_file, status=status),
+                    patch.object(
+                        check_links.urllib.request, "urlopen", side_effect=error
+                    ) as opener,
+                    patch("time.sleep") as sleep,
+                    self.assertRaises(urllib.error.HTTPError) as raised,
+                ):
+                    self.fetch(profile_file)
+                self.assertIs(raised.exception, error)
+                self.assertEqual(opener.call_count, 1)
+                sleep.assert_not_called()
+
+    def test_exhaustion_preserves_the_failure_and_bounds_waits(self) -> None:
+        for profile_file in (False, True):
+            for error in (
+                urllib.error.HTTPError("https://example.test", 503, "Unavailable", {}, None),
+                urllib.error.URLError("still unavailable"),
+                TimeoutError("still unavailable"),
+            ):
+                with (
+                    self.subTest(profile_file=profile_file, error=error),
+                    patch.object(
+                        check_links.urllib.request, "urlopen", side_effect=error
+                    ) as opener,
+                    patch("time.sleep") as sleep,
+                    self.assertRaises(type(error)) as raised,
+                ):
+                    self.fetch(profile_file)
+                self.assertIs(raised.exception, error)
+                self.assertEqual(opener.call_count, 5)
+                self.assertEqual(sleep.call_args_list, [call(1), call(2), call(4), call(8)])
+
+    def test_retry_after_and_wait_budget(self) -> None:
+        now = 1_700_000_000
+        for profile_file in (False, True):
+            for status in (429, 503):
+                for header, delay in (
+                    ("2", 2),
+                    (email.utils.formatdate(now + 3, usegmt=True), 3),
+                    ("invalid", 1),
+                    ("-1", 1),
+                    ("3600", None),
+                ):
+                    headers = email.message.Message()
+                    headers["Retry-After"] = header
+                    error = urllib.error.HTTPError(
+                        "https://example.test", status, "Wait", headers, None
+                    )
+                    with (
+                        self.subTest(profile_file=profile_file, status=status, header=header),
+                        patch.object(
+                            check_links.urllib.request,
+                            "urlopen",
+                            side_effect=[error, self.response()],
+                        ) as opener,
+                        patch("time.sleep") as sleep,
+                        patch("time.time", return_value=now),
+                    ):
+                        if delay is None:
+                            with self.assertRaises(urllib.error.HTTPError):
+                                self.fetch(profile_file)
+                            self.assertEqual(opener.call_count, 1)
+                            sleep.assert_not_called()
+                        else:
+                            self.fetch(profile_file)
+                            self.assertEqual(opener.call_count, 2)
+                            sleep.assert_called_once_with(delay)
+            headers = email.message.Message()
+            headers["Retry-After"] = "20"
+            error = urllib.error.HTTPError("https://example.test", 429, "Wait", headers, None)
+            with (
+                patch.object(check_links.urllib.request, "urlopen", side_effect=error) as opener,
+                patch("time.sleep") as sleep,
+                self.assertRaises(urllib.error.HTTPError),
+            ):
+                self.fetch(profile_file)
+            self.assertEqual(opener.call_count, 2)
+            sleep.assert_called_once_with(20)
 
 
 class UrlPolicyTests(unittest.TestCase):
