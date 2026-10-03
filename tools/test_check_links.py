@@ -585,8 +585,9 @@ class ConcurrentLinkTests(unittest.TestCase):
                 completed.append(url)
             if url.endswith("/b"):
                 second_finished.set()
-            if url.endswith("/c") or "linkedin.com" in url:
-                error = urllib.error.HTTPError(url, 999 if "linkedin.com" in url else 404, "Fixture", {}, None)
+            denied = url in (check_links.LINKEDIN_IDENTITY_URL, "https://www.linkedin.com/in/someone-else/")
+            if url.endswith("/c") or denied:
+                error = urllib.error.HTTPError(url, 999 if denied else 404, "Fixture", {}, None)
                 error.close()
                 raise error
             if url.endswith("/d"):
