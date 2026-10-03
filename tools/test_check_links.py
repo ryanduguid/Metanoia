@@ -7,6 +7,7 @@ import email.message
 import email.utils
 import io
 import tempfile
+import threading
 import unittest
 import urllib.error
 import urllib.response
@@ -500,6 +501,133 @@ class RetryTests(unittest.TestCase):
                 self.fetch(profile_file)
             self.assertEqual(opener.call_count, 2)
             sleep.assert_called_once_with(20)
+
+
+class ConcurrentLinkTests(unittest.TestCase):
+    def test_link_reads_overlap_with_bounded_workers_and_independent_retries(self) -> None:
+        urls = [f"https://example.test/start/{index}" for index in range(8)]
+        barrier = threading.Barrier(4, timeout=2)
+        lock = threading.Lock()
+        active = peak = 0
+        visits: dict[str, int] = {}
+        bodies: list[io.BytesIO] = []
+        workers: set[threading.Thread] = set()
+
+        class Handler(urllib.request.HTTPSHandler):
+            def https_open(self, request):
+                nonlocal active, peak
+                url = request.full_url
+                with lock:
+                    active += 1
+                    peak = max(peak, active)
+                    visits[url] = visits.get(url, 0) + 1
+                    visit = visits[url]
+                    workers.add(threading.current_thread())
+                try:
+                    headers = email.message.Message()
+                    if "/start/" in url:
+                        barrier.wait()
+                        headers["Location"] = url.replace("/start/", "/end/")
+                        code = 302
+                    else:
+                        code = 503 if visit == 1 else 200
+                    body = io.BytesIO(b"fixture")
+                    with lock:
+                        bodies.append(body)
+                    response = urllib.response.addinfourl(body, headers, url, code)
+                    response.msg = "Fixture"
+                    return response
+                finally:
+                    with lock:
+                        active -= 1
+
+        opener = urllib.request.build_opener(
+            urllib.request.ProxyHandler({}), check_links._HttpsRedirectHandler(), Handler()
+        )
+        output = io.StringIO()
+        with (
+            patch.object(check_links, "FILES", []),
+            patch.object(check_links, "LLMS_COMPONENTS", {}),
+            profile(**{"FORKS.md": "\n".join(urls), "llms.txt": ""}),
+            patch.object(check_links, "_URL_OPENER", opener),
+            patch.object(check_links.time, "sleep") as sleep,
+            contextlib.redirect_stdout(output),
+        ):
+            self.assertEqual(check_links.main(), 0, output.getvalue())
+        self.assertEqual(peak, 4)
+        self.assertEqual(len(workers), 4)
+        self.assertTrue(all(not worker.is_alive() for worker in workers))
+        self.assertEqual(len(visits), 16)
+        self.assertTrue(all(count == 2 for count in visits.values()))
+        self.assertEqual(sleep.call_args_list, [call(1)] * 8)
+        self.assertEqual(len(bodies), 32)
+        self.assertTrue(all(body.closed for body in bodies))
+
+    def test_reporting_stays_sorted_and_excluded_and_duplicate_urls_are_not_fetched(self) -> None:
+        urls = [
+            "http://example.test/insecure", "https://img.shields.io/badge/skip-fixture",
+            *(f"https://example.test/{name}" for name in "abcde"),
+            "https://github.com/ryanduguid/OldName", check_links.LINKEDIN_IDENTITY_URL,
+            "https://www.linkedin.com/in/someone-else/", "https://example.test/a",
+        ]
+        second_finished = threading.Event()
+        completed: list[str] = []
+        fetched: list[str] = []
+        lock = threading.Lock()
+
+        def resolve(url: str) -> tuple[int, str]:
+            with lock:
+                fetched.append(url)
+            if url.endswith("/a"):
+                if not second_finished.wait(2):
+                    raise TimeoutError("second fixture link did not finish")
+            with lock:
+                completed.append(url)
+            if url.endswith("/b"):
+                second_finished.set()
+            denied = url in (check_links.LINKEDIN_IDENTITY_URL, "https://www.linkedin.com/in/someone-else/")
+            if url.endswith("/c") or denied:
+                error = urllib.error.HTTPError(url, 999 if denied else 404, "Fixture", {}, None)
+                error.close()
+                raise error
+            if url.endswith("/d"):
+                raise ValueError("fixture failure")
+            if url.endswith("/e"):
+                return 302, url
+            if url.endswith("/OldName"):
+                return 200, "https://github.com/ryanduguid/NewName"
+            return 200, url
+
+        output = io.StringIO()
+        with (
+            patch.object(check_links, "FILES", []),
+            patch.object(check_links, "LLMS_COMPONENTS", {}),
+            profile(**{"FORKS.md": "\n".join(urls), "llms.txt": ""}),
+            patch.object(check_links, "fetch_final_url", resolve),
+            contextlib.redirect_stdout(output),
+        ):
+            self.assertEqual(check_links.main(), 1)
+        self.assertLess(completed.index("https://example.test/b"), completed.index("https://example.test/a"))
+        self.assertEqual(len(fetched), 8)
+        self.assertEqual(len(set(fetched)), 8)
+        self.assertNotIn(urls[0], fetched)
+        self.assertNotIn(urls[1], fetched)
+        self.assertEqual(
+            [line for line in output.getvalue().splitlines() if line.startswith("ok ")],
+            ["ok https://example.test/a", "ok https://example.test/b"],
+        )
+        self.assertEqual(
+            [line for line in output.getvalue().splitlines() if line.startswith("  FAIL ")],
+            [
+                "  FAIL profile FORKS.md: insecure link http://example.test/insecure",
+                "  FAIL profile FORKS.md: https://example.test/c -> HTTP 404",
+                "  FAIL profile FORKS.md: https://example.test/d -> fixture failure",
+                "  FAIL profile FORKS.md: https://example.test/e -> HTTP 302",
+                "  FAIL profile FORKS.md: https://github.com/ryanduguid/OldName redirected to https://github.com/ryanduguid/NewName (rename redirect, repoint the link)",
+                "  FAIL profile FORKS.md: https://www.linkedin.com/in/someone-else/ -> HTTP 999",
+            ],
+        )
+        self.assertIn("accepted automation denial " + check_links.LINKEDIN_IDENTITY_URL, output.getvalue())
 
 
 class UrlPolicyTests(unittest.TestCase):

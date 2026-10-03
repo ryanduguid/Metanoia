@@ -31,6 +31,7 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
+from concurrent.futures import ThreadPoolExecutor
 from datetime import timezone
 from email.utils import parsedate_to_datetime
 from pathlib import Path
@@ -312,41 +313,53 @@ def main() -> int:
 
     resolved = 0
     accepted_denials = 0
-    for url, src in sorted(urls.items()):
-        if url.startswith("http:"):
-            failures.append(f"{src}: insecure link {url}")
-            continue
-        # Badge URLs encode label text, not a resource that can 404 meaningfully.
-        if url.startswith("https://img.shields.io/badge/"):
-            continue
+    with ThreadPoolExecutor(max_workers=4) as executor:
+        pending = {
+            url: executor.submit(fetch_final_url, url)
+            for url in urls
+            if not url.startswith(("http:", "https://img.shields.io/badge/"))
+        }
         try:
-            status, final = fetch_final_url(url)
-        except urllib.error.HTTPError as exc:
-            if is_accepted_automation_denial(url, exc.code):
-                accepted_denials += 1
-                print(
-                    f"accepted automation denial {url} -> HTTP {exc.code} "
-                    "(exact LinkedIn identity URL; automated requests are blocked)"
-                )
-            else:
-                failures.append(f"{src}: {url} -> HTTP {exc.code}")
-            continue
-        except Exception as exc:  # noqa: BLE001 - report every failure mode
-            failures.append(f"{src}: {url} -> {exc}")
-            continue
-        if not 200 <= status < 300:
-            failures.append(f"{src}: {url} -> HTTP {status}")
-            continue
-        name = own_repository(url)
-        if name is not None:
-            final_name = own_repository(final)
-            if final_name is None or final_name.lower() != name.lower():
-                failures.append(
-                    f"{src}: {url} redirected to {final} (rename redirect, repoint the link)"
-                )
-                continue
-        resolved += 1
-        print(f"ok {url}")
+            for url, src in sorted(urls.items()):
+                if url.startswith("http:"):
+                    failures.append(f"{src}: insecure link {url}")
+                    continue
+                # Badge URLs encode label text, not a resource that can 404 meaningfully.
+                if url.startswith("https://img.shields.io/badge/"):
+                    continue
+                try:
+                    status, final = pending[url].result()
+                except urllib.error.HTTPError as exc:
+                    if is_accepted_automation_denial(url, exc.code):
+                        accepted_denials += 1
+                        print(
+                            f"accepted automation denial {url} -> HTTP {exc.code} "
+                            "(exact LinkedIn identity URL; automated requests are blocked)"
+                        )
+                    else:
+                        failures.append(f"{src}: {url} -> HTTP {exc.code}")
+                    continue
+                except Exception as exc:  # noqa: BLE001 - report every failure mode
+                    failures.append(f"{src}: {url} -> {exc}")
+                    continue
+                if not 200 <= status < 300:
+                    failures.append(f"{src}: {url} -> HTTP {status}")
+                    continue
+                name = own_repository(url)
+                if name is not None:
+                    final_name = own_repository(final)
+                    if final_name is None or final_name.lower() != name.lower():
+                        failures.append(
+                            f"{src}: {url} redirected to {final} (rename redirect, repoint the link)"
+                        )
+                        continue
+                resolved += 1
+                print(f"ok {url}")
+
+        finally:
+            # Cancel queued reads if reporting or waiting is interrupted.
+            for future in pending.values():
+                future.cancel()
 
     if failures:
         print(f"\n{len(failures)} failure(s):")
