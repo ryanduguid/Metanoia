@@ -38,12 +38,19 @@ MARKDOWN_LLMS = """\
 """
 
 
+def closed_http_error(url: str, code: int, msg: str) -> urllib.error.HTTPError:
+    """An HTTPError as the fetchers raise it: _request_url has already closed it."""
+    error = urllib.error.HTTPError(url, code, msg, {}, None)
+    error.close()
+    return error
+
+
 def profile(**files: str):
     """Patch the profile reads with fixed text; missing names raise like a 404."""
 
     def fetch(name: str) -> str:
         if name not in files:
-            raise urllib.error.HTTPError(check_links.PROFILE_RAW + name, 404, "Not Found", {}, None)
+            raise closed_http_error(check_links.PROFILE_RAW + name, 404, "Not Found")
         return files[name]
 
     return patch.object(check_links, "fetch_profile_file", fetch)
@@ -701,7 +708,7 @@ class UrlPolicyTests(unittest.TestCase):
 
                 def resolve(url: str) -> tuple[int, str]:
                     if url == linkedin:
-                        raise urllib.error.HTTPError(url, 999, "Denied", {}, None)
+                        raise closed_http_error(url, 999, "Denied")
                     return 200, url
 
                 output = io.StringIO()
@@ -726,8 +733,8 @@ class UrlPolicyTests(unittest.TestCase):
         broken = "https://example.test/broken"
         renamed = "https://github.com/ryanduguid/old-name"
         cases = [
-            (broken, urllib.error.HTTPError(broken, 999, "Denied", {}, None), "HTTP 999"),
-            (linkedin, urllib.error.HTTPError(linkedin, 404, "Not Found", {}, None), "HTTP 404"),
+            (broken, closed_http_error(broken, 999, "Denied"), "HTTP 999"),
+            (linkedin, closed_http_error(linkedin, 404, "Not Found"), "HTTP 404"),
             (broken, urllib.error.URLError("no network"), "no network"),
             (renamed, (200, "https://github.com/ryanduguid/new-name"), "rename redirect"),
             (broken, (199, broken), "HTTP 199"),
@@ -740,7 +747,7 @@ class UrlPolicyTests(unittest.TestCase):
                         if isinstance(outcome, Exception):
                             raise outcome
                         return outcome
-                    raise urllib.error.HTTPError(target, 999, "Denied", {}, None)
+                    raise closed_http_error(target, 999, "Denied")
 
                 output = io.StringIO()
                 with (
@@ -760,7 +767,7 @@ class UrlPolicyTests(unittest.TestCase):
         gone = "https://github.com/ryanduguid/australian-accounting/tree/main/packages/gone"
 
         def resolve(url: str) -> tuple[int, str]:
-            raise urllib.error.HTTPError(url, 404, "Not Found", {}, None)
+            raise closed_http_error(url, 404, "Not Found")
 
         output = io.StringIO()
         with (
